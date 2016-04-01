@@ -1124,6 +1124,7 @@ begin
             ,'SEATO_FullProcessedUsers'
             ,'SEATO_MailContactsFound'
             ,'SEATO_MailContactDeletionFailures'
+            ,'SEATO_OLMailboxSummary'
             ,'SEATO_OriginalTargetUsers'
             ,'SEATO_OriginalSourceUsers'
             ,'SEATO_MembershipAddFailures'
@@ -2031,11 +2032,13 @@ end
                     Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
                     Write-Log -message $message -EntryType Succeeded
                     $ErrorActionPreference = 'Continue'
+                    $SetMailboxForwardingStatus = $true
                 }
                 catch {
                     Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                     Write-Log -Message $_.tostring() -ErrorLog
                     Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
+                    $SetMailboxForwardingStatus = $false
                     $ErrorActionPreference = 'Continue'
                 }
             }
@@ -2044,12 +2047,18 @@ end
                 Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                 Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
             }
+            if ($SetMailboxForwardingStatus) {
+                $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
+                $propertyset = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes EmailAddresses -ScalarAttributes PrimarySMTPAddress,ForwardingSmtpAddress
+                $OLMailboxSummary = $OLMailbox | Select-Object -Property $PropertySet
+                $Global:SEATO_OLMailboxSummary += $OLMailboxSummary
+            }
             #endregion SetMailboxForwarding
             #############################################################
             #Processing Complete: Report Results
             #############################################################
             $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TimeStamp';e={Get-TimeStamp}}
-            $Global:SEATO_ProcessedUsers += $ProcessedUser
+            $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
             Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
         }#foreach
         #region ReportAllResults
@@ -2072,6 +2081,10 @@ end
         if ($Global:SEATO_MailContactDeletionFailures.Count -ge 1) {
             Write-Log -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
             Export-Data -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
+        }
+        if ($Global:SEATO_OLMailboxSummary.count -ge 1) {
+            Write-Log -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
+            Export-Data -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
         }
         #endregion ReportAllResults
     }#else
