@@ -1523,7 +1523,8 @@ end
                 DesiredProxyAddresses = $DesiredProxyAddresses
                 DesiredUPNAndPrimarySMTPAddress = $DesiredUPNAndPrimarySMTPAddress
                 DesiredAlias = $DesiredAlias
-                DesiredCoexistenceRoutingAddress = "O365_$($DesiredAlias)@$($SADUCurrentPrimarySmtpAddress.split('@')[1])"
+                DesiredCoexistenceRoutingAddress = $forwardingAddressHash.$SADUCurrentPrimarySmtpAddress
+                #"O365_$($DesiredAlias)@$($SADUCurrentPrimarySmtpAddress.split('@')[1])"
                 DesiredTargetAddress = "SMTP:$($DesiredAlias)@$($TargetDeliveryDomain)"
                 ShouldUpdateUPN = if ($DesiredUPNAndPrimarySMTPAddress -ne $TADU.UserPrincipalName) {$true} else {$false}
             }
@@ -1594,10 +1595,19 @@ end
                 }
                 else
                 {$TargetOperation = 'EnableRemoteMailbox'}
+                if ([string]::IsNullOrWhiteSpace($intobj.DesiredCoexistenceRoutingAddress)) {
+                    $TargetOperation = "None"
+                }
                 #endregion DetermineTargetOperation
                 #region PerformTargetAttributeUpdate
                 switch ($TargetOperation) 
                 {
+                    'None'
+                    {
+                        Write-Log -Message "Target Operation Could Not Be Determined for $SADUGUID" -Verbose -ErrorLog -EntryType Failed
+                        Export-FailureRecord -Identity $ID -ExceptionCode 'TargetOperationNotDetermined' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
+                        continue nextIntObj
+                    }
                     'EnableRemoteMailbox' 
                     {
                         #############################################################
