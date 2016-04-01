@@ -2046,7 +2046,7 @@ end
         if ($Global:SEATO_ProcessedUsers.count -ge 1) {
             Write-Log -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
             Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
-            Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers
+            Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
         }
         if ($Global:SEATO_Exceptions.count -ge 1) {
             Write-Log -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
