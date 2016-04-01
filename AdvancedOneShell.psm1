@@ -1998,12 +1998,12 @@ end
             #Write-Log -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
             #Start-DirectorySynchronization
             #Build Properties for CSV Output
-            $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties 
         }
         foreach ($IntObj in $ProcessedObjects) {
             $SADUGUID = $IntObj.SourceUserObjectGUID
             $TADUGUID = $IntObj.TargetUserObjectGUID
             $TADU = Find-ADUser -Identity $IntObj.TargetUserObjectGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
+            $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
             $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet 
             #region WaitforDirectorySynchronization
             #############################################################
