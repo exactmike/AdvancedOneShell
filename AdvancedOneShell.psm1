@@ -1121,6 +1121,7 @@ begin
         @(
             'SEATO_Exceptions'
             ,'SEATO_ProcessedUsers'
+            ,'SEATO_FullProcessedUsers'
             ,'SEATO_MailContactsFound'
             ,'SEATO_MailContactDeletionFailures'
             ,'SEATO_OriginalTargetUsers'
@@ -1985,11 +1986,14 @@ end
             New-Timer -units Seconds -length $ADSyncDelayInSeconds -showprogress -Frequency 5 -voice
             #Write-Log -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
             #Start-DirectorySynchronization
+            #Build Properties for CSV Output
+            $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties 
         }
         foreach ($IntObj in $ProcessedObjects) {
             $SADUGUID = $IntObj.SourceUserObjectGUID
             $TADUGUID = $IntObj.TargetUserObjectGUID
             $TADU = Find-ADUser -Identity $IntObj.TargetUserObjectGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
+            $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet 
             #region WaitforDirectorySynchronization
             #############################################################
             #Request Directory Synchronization and Wait for Completion to Set Forwarding
@@ -2034,7 +2038,7 @@ end
             #############################################################
             #Processing Complete: Report Results
             #############################################################
-            $ProcessedUser = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TimeStamp';e={Get-TimeStamp}}
+            $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TimeStamp';e={Get-TimeStamp}}
             $Global:SEATO_ProcessedUsers += $ProcessedUser
             Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
         }#foreach
@@ -2042,6 +2046,7 @@ end
         if ($Global:SEATO_ProcessedUsers.count -ge 1) {
             Write-Log -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
             Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
+            Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers
         }
         if ($Global:SEATO_Exceptions.count -ge 1) {
             Write-Log -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
