@@ -1353,6 +1353,10 @@ end
                 }#catch
                 $TargetUserObjectExchangeRecipientType = Get-RecipientType -msExchRecipientTypeDetails $TADU.msExchRecipientTypeDetails | Select-Object -ExpandProperty Name
             }
+            else {
+                $TADUCurrentPrimarySmtpAddress = $null
+                $TargetUserObjectExchangeRecipientType = $null
+            }
             #endregion FindTADUExchangeDetails
             #region FindContacts
             #lookup mail contacts in the Target AD (using Source AD Proxy addresses, target address, and altRecipient)
@@ -1451,14 +1455,20 @@ end
                     1 
                     {
                         $DesiredAlias = $SADU.givenname.substring(0,1) + $SADU.surname
+                        #remove spaces and other special characters
+                        $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                     }
                     2 
                     {
                         $DesiredAlias = $SADU.givenname.substring(0,2) + $SADU.surname
+                        #remove spaces and other special characters
+                        $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                     }
                     3 
                     {
                         $DesiredAlias = $SADU.givenname.substring(0,3) + $SADU.surname
+                        #remove spaces and other special characters
+                        $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                     }
                 }
                 $DesiredUPNAndPrimarySMTPAddress = $DesiredAlias + '@' + $ForceTargetPrimarySMTPDomain
@@ -1474,6 +1484,10 @@ end
                     Write-Log -message "Was not able to find a valid alias and/or PrimarySMTPAddress to Assign to the target: $ID" -Verbose -EntryType Failed
                     Export-FailureRecord -Identity $ID -ExceptionCode 'InvalidAliasOrPrimarySMTPAddress' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                     continue nextID
+            }
+            else {
+                Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID 
+                Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP 
             }
             #Build Proxy Address Array to use in Target AD
             $writeProgressParams.currentOperation = "Build Proxy Addresses Array for $ID"
