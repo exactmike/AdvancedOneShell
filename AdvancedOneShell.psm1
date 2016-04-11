@@ -1321,7 +1321,7 @@ end
                 {
                     $false
                 }
-            )
+            )#SourceUserObjectIsExchangeRecipient
             if ($SourceUserObjectIsExchangeRecipient) {
                 try 
                 {
@@ -1501,8 +1501,8 @@ end
                     continue nextID
             }
             else {
-                Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID 
-                Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP 
+                Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID | out-null
+                Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP | out-null
             }
             #Build Proxy Address Array to use in Target AD
             $writeProgressParams.currentOperation = "Build Proxy Addresses Array for $ID"
