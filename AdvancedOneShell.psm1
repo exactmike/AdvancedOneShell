@@ -2187,7 +2187,7 @@ end
             $TADUGUID = $IntObj.TargetUserObjectGUID
             $TADU = Find-ADUser -Identity $IntObj.TargetUserObjectGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
             $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
-            $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet 
+            $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet -ExcludeProperty msExchPoliciesExcluded
             #region WaitforDirectorySynchronization
             #############################################################
             #Request Directory Synchronization and Wait for Completion to Set Forwarding
@@ -2195,7 +2195,7 @@ end
             $GUIDMATCH = $false
             $TestDirectorySynchronizationParams = @{
                 Identity = $IntObj.DesiredUPNAndPrimarySMTPAddress
-                MaxSyncWaitMinutes = 4
+                MaxSyncWaitMinutes = 5
                 DeltaSyncExpectedMinutes = 2
                 SyncCheckInterval = 15
                 ExchangeOrganization = 'OL'
