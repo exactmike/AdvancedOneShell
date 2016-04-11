@@ -1115,6 +1115,8 @@ $SourceData
 [switch]$TestOnly
 ,
 $DestinationOU
+,
+[string]$MoveRequestWaveBatchName
 )#Param
 begin 
 {
@@ -2205,26 +2207,61 @@ end
             #endregion WaitforDirectorySynchronization
             #region SetMailboxForwarding
             if ($DirSyncTest) {
-                if ($IntObj.TargetOperation -eq 'EnableRemoteMailbox')
+                switch ($IntObj.TargetOperation)
                 {
-                    try {
-                        $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
-                        Connect-Exchange -ExchangeOrganization OL
-                        $ErrorActionPreference = 'Stop'
-                        Write-Log -message $message -EntryType Attempting
-                        Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
-                        Write-Log -message $message -EntryType Succeeded
-                        $ErrorActionPreference = 'Continue'
-                        $SetMailboxForwardingStatus = $true
+                    'EnableRemoteMailbox'
+                    {
+                        try {
+                            $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
+                            Connect-Exchange -ExchangeOrganization OL
+                            $ErrorActionPreference = 'Stop'
+                            Write-Log -message $message -EntryType Attempting
+                            Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
+                            Write-Log -message $message -EntryType Succeeded
+                            $ErrorActionPreference = 'Continue'
+                            $SetMailboxForwardingStatus = $true
+                        }
+                        catch {
+                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                            Write-Log -Message $_.tostring() -ErrorLog
+                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
+                            $SetMailboxForwardingStatus = $false
+                            $ErrorActionPreference = 'Continue'
+                        }
                     }
-                    catch {
-                        Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                        Write-Log -Message $_.tostring() -ErrorLog
-                        Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
-                        $SetMailboxForwardingStatus = $false
-                        $ErrorActionPreference = 'Continue'
+                    'SourceIsTarget:UpdateAndMigrateOnPremisesMailbox'
+                    {
+                        $SourceDataProperties = @(
+                            @{
+                                name='SourceSystem'
+                                expression={$TargetExchangeOrganization}
+                            }
+                            @{
+                                name='Alias'
+                                expression={$_.mailNickname}
+                            }
+                            @{
+                                name='Wave'
+                                expression = {$MoveRequestWaveBatchName}
+                            }
+                            ,
+                            'UserPrincipalName'
+                        )
+                        try 
+                        {
+                            $message = "Create Move Request for $TADUGUID"
+                            Write-Log -Message $message -EntryType Attempting 
+                            $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
+                            New-WaveBatchMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop
+                            Write-Log -Message $message -EntryType Succeeded
+                        }
+                        catch 
+                        {
+                            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                            Write-Log -Message $_.tostring() -ErrorLog
+                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
+                        }
                     }
-                }
             }
             else {
                 $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress). Sync Related Failure."
