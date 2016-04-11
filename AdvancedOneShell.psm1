@@ -2238,14 +2238,16 @@ end
                             }
                             @{
                                 name='Alias'
-                                expression={$_.mailNickname}
+                                expression={$_.DesiredAlias}
                             }
                             @{
                                 name='Wave'
                                 expression = {$MoveRequestWaveBatchName}
                             }
-                            ,
-                            'UserPrincipalName'
+                            @{
+                                name='UserPrincipalName'
+                                expression = {$_.DesiredUPNAndPrimarySMTPAddress}
+                            }
                         )
                         try 
                         {
