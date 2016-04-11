@@ -1113,6 +1113,8 @@ $SourceData
 [switch]$ClearGlobalTrackingVariables
 ,
 [switch]$TestOnly
+,
+$DestinationOU
 )#Param
 begin 
 {
@@ -2111,6 +2113,27 @@ end
                     }
                 }
                 #endregion DeleteSourceObject
+                #region MoveTargetObject
+                #############################################################
+                #Move Target Object if Target Object was Source Object
+                #############################################################
+                if ($intobj.TargetUserObjectIsSourceUserObject) 
+                {
+                    $message = "Target User Object is the Source User Object.  Move to Destination OU: $DestinationOU"
+                    try 
+                    {
+                        Write-Log -Message $message -EntryType Attempting -Verbose
+                        $domain = Get-AdObjectDomain -adobject $TADU -ErrorAction Stop
+                        Move-ADObject -Server $domain -Identity $TADUGUID -TargetPath $DestinationOU -ErrorAction Stop
+                        Write-Log -Message $message -EntryType Succeeded -Verbose
+                    }
+                    catch 
+                    {
+                        Write-Log -Message $message -EntryType Failed -Verbose
+                        Write-Log -Message $_.tostring() -ErrorLog
+                    }
+                }
+                #endregion MoveTargetObject
                 #region RefreshTargetObjectRecipient
                 #############################################################
                 #Refresh Exchange recipient object for TADU
