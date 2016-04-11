@@ -2262,6 +2262,7 @@ end
                             Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                         }
                     }
+                }#switch
             }
             else {
                 $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress). Sync Related Failure."
