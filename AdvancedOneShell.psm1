@@ -1,4 +1,54 @@
-﻿function Get-ExistingProxyAddressTypes {
+﻿###############################################################################################
+#Module Variables and Variable Functions
+###############################################################################################
+function Get-AOSVariable
+{
+param
+(
+[string]$Name
+)
+    Get-Variable -Scope Script -Name $name 
+}
+function Get-AOSVariableValue
+{
+param
+(
+[string]$Name
+)
+    Get-Variable -Scope Script -Name $name -ValueOnly
+}
+function Set-AOSVariable
+{
+param
+(
+[string]$Name
+,
+$Value
+)
+    Set-Variable -Scope Script -Name $Name -Value $value  
+}
+function New-AOSVariable
+{
+param 
+(
+[string]$Name
+,
+$Value
+)
+    New-Variable -Scope Script -Name $name -Value $Value
+}
+function Remove-AOSVariable
+{
+param
+(
+[string]$Name
+)
+    Remove-Variable -Scope Script -Name $name
+}
+###############################################################################################
+#Core Advanced OneShell Functions
+###############################################################################################
+function Get-ExistingProxyAddressTypes {
 param(
 [object[]]$proxyAddresses
 )
@@ -193,38 +243,40 @@ param(
     Write-Log -Message "FAILED: to write Exception Record for $identity with Exception Code $ExceptionCode and Failure Group $FailureGroup" -ErrorLog
     }
 }#Function Export-FailureRecord
-function Move-StagedAccountToOperationalOU {
+function Move-StagedADObjectToOperationalOU {
 param(
 [parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
-[string[]]$SAMAccountName
+[string[]]$Identity
 ,
 [string]$DestinationOU
 )
 begin {}
 process {
-    foreach ($S in $SAMAccountName) {
+    foreach ($I in $Identity) {
         try {
-            Write-Log -Message "Attempting: Get-ADUser -Identity $S" -Verbose
-            $aduser = Get-ADUser -Identity $S -ErrorAction Stop
-            Write-Log -Message "Succeeded: Get-ADUser -Identity $S" -Verbose
+            $message = "Find AD Object: $I"
+            Write-Log -Message $message -EntryType Attempting
+            $aduser = Get-ADObject -Identity $I -ErrorAction Stop
+            Write-Log -Message $message -EntryType Succeeded
         }#try
         catch {
-            Write-Log -Message "FAILED: Get-ADUser -Identity $S" -Verbose -ErrorLog
-            Write-Log -Message $_.tostring()
+            Write-Log -Message $message -Verbose -EntryType Failed -ErrorLog
+            Write-Log -Message $_.tostring() -ErrorLog
         }#catch
         try {
-            Write-Log -Message "Attempting: Move-ADObject -TargetPath $DestinationOU" -Verbose
+            $message = "Move-ADObject -Identity $I -TargetPath $DestinationOU"
+            Write-Log -Message $message -EntryType Attempting
             $aduser | Move-ADObject -TargetPath $DestinationOU -ErrorAction Stop
-            Write-Log -Message "Succeeded: Move-ADObject -TargetPath $DestinationOU" -Verbose
+            Write-Log -Message $message -EntryType Succeeded
         }#try
         catch {
-            Write-Log -Message "FAILED: Move-ADObject -TargetPath $DestinationOU" -Verbose -ErrorLog
-            Write-Log -Message $_.tostring()
+            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+            Write-Log -Message $_.tostring() -ErrorLog
         }#catch
     }#foreach
 }
 end{}
-}#function Move-StagedAccountToOperationalOU
+}#function Move-StagedADObjectToOperationalOU
 function Update-PostMigrationMailboxUser {
 [cmdletbinding()]
 param(
