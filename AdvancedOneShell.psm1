@@ -2333,7 +2333,7 @@ end
             #############################################################
             #Processing Complete: Report Results
             #############################################################
-            $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TargetOperation';e={$intobj.TargetOperation}},@{n='TimeStamp';e={Get-TimeStamp}}
+            $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,MailNickName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TargetOperation';e={$intobj.TargetOperation}},@{n='TimeStamp';e={Get-TimeStamp}}
             $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
             Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
         }#foreach
