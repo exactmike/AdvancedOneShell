@@ -2117,10 +2117,13 @@ end
                         identity=$TADUGUID
                         add=@{
                             #Adjust this section to use parameters depending on the recipient type which should be created.  Following is currently set for Existing Mailbox.
-                            #msExchRecipientDisplayType = -2147483642 #RemoteUserMailbox
-                            #msExchRecipientTypeDetails = 2147483648 #RemoteUserMailbox
+                            msExchRecipientDisplayType = 1073741824 #UserMailbox
+                            msExchRecipientTypeDetails = 1 #UserMailbox
                             #msExchRemoteRecipientType = 1 #ProvisionMailbox
-                            #msExchVersion = 44220983382016
+                            msExchVersion = 44220983382016
+                            msExchHomeServer = $SADU.msExchHomeServer
+                            homeMDB = $SADU.homeMDB
+                            homeMTA = $SADU.homeMTA
                             #targetaddress = $intobj.DesiredTargetAddress #can't do this here - must be post mailbox move
                             #hard coding these for a customer for now
                             msExchUsageLocation = 'US'
