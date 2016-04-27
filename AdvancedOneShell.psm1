@@ -2121,9 +2121,9 @@ end
                             msExchRecipientTypeDetails = 1 #UserMailbox
                             #msExchRemoteRecipientType = 1 #ProvisionMailbox
                             msExchVersion = 44220983382016
-                            msExchHomeServerName = $SADU.msExchHomeServer
-                            homeMDB = $SADU.homeMDB
-                            homeMTA = $SADU.homeMTA
+                            msExchHomeServerName = $($SADU.msExchHomeServerName)
+                            homeMDB = $($SADU.homeMDB)
+                            homeMTA = $($SADU.homeMTA)
                             #targetaddress = $intobj.DesiredTargetAddress #can't do this here - must be post mailbox move
                             #hard coding these for a customer for now
                             msExchUsageLocation = 'US'
