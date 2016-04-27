@@ -420,7 +420,7 @@ process{
                 0 {
                     Write-Log -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                     $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
-                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append 
                     throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
                 }#0
                 Default {
@@ -1258,7 +1258,7 @@ process
                         catch {
                             Write-Log -message $writeProgressParams.currentoperation -Verbose -EntryType Failed -ErrorLog
                             Write-Log -Message $_.tostring() -ErrorLog
-                            Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $ID -RelatedObjectIdentifierType $SourceLookupAttribute
+                            Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $value -RelatedObjectIdentifierType $SourceLookupAttribute -ExceptionDetails
                         }
                     )#TrialSADU
                     #Determine action based on the results of the lookup attempt in the target AD
