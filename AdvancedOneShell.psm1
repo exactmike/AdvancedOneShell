@@ -1325,7 +1325,13 @@ end
             try 
             {
                 Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Attempting
-                $TrialTADU = @(Find-Aduser -Identity $ID -IdentityType $TargetLookupPrimaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed)
+                $TrialTADU = 
+                @(
+                    if (-not [string]::IsNullOrWhiteSpace($id))
+                    {
+                        Find-Aduser -Identity $ID -IdentityType $TargetLookupPrimaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed
+                    }
+                )
                 $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                 if ($TrialTADU.Count -gt 0)
                 {
