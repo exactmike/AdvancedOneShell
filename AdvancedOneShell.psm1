@@ -1304,7 +1304,8 @@ end
             $SADUGUID = $SADU.objectguid.guid
             #value is the value to use in lookup.  attribute is the attribute to lookup against.
             $ID = $SADU.$TargetLookupPrimaryValue
-            if ($TargetLookupSecondaryAttribute) 
+            #check for secondary lookup attempt parameters
+            if ($PSBoundParameters.ContainsKey('TargetLookupSecondaryAttribute') -and $PSBoundParameters.ContainsKey('targetLookupSecondaryValue'))
             {
                 $trySecondary = $true
                 $SecondaryID = $SADU.$targetLookupSecondaryValue
@@ -1330,7 +1331,7 @@ end
                 {
                     $TrialTADU | Add-Member -MemberType NoteProperty -Name MatchAttribute -Value $TargetLookupPrimaryAttribute
                 }
-                if ($TrialTADU.Count -eq 0 -and $trySecondary)
+                if ($TrialTADU.Count -lt 1 -and $trySecondary)
                 {
                     if ($TargetLookupSecondaryAttribute -eq 'GivenNameSurname')
                     {
