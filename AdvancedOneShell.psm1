@@ -1326,19 +1326,29 @@ end
                 Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Attempting
                 $TrialTADU = @(Find-Aduser -Identity $ID -IdentityType $TargetLookupPrimaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed)
                 $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
-                if ($TrialTADU.Count -eq 0 -and $trySecondary) 
+                if ($TrialTADU.Count -gt 0)
                 {
-                    if ($TargetLookupSecondaryAttribute -eq 'GivenNameSurname') 
+                    $TrialTADU | Add-Member -MemberType NoteProperty -Name MatchAttribute -Value $TargetLookupPrimaryAttribute
+                }
+                if ($TrialTADU.Count -eq 0 -and $trySecondary)
+                {
+                    if ($TargetLookupSecondaryAttribute -eq 'GivenNameSurname')
                     {
                         $GivenName = $SADU.GivenName
                         $SurName = $SADU.Surname
                         Write-log -Message "Attempting Secondary Attribute Lookup using GivenName: $givenName Surname: $SurName" -EntryType Notification
                         $TrialTADU = @(Find-ADUser -GivenName $GivenName -SurName $SurName -IdentityType GivenNameSurname -AmbiguousAllowed -ADInstance $TargetAD -ErrorAction Stop)
+                        $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                     }
-                    else 
+                    else
                     {
                         Write-log -Message "Attempting Secondary Attribute Lookup using $secondaryID in $TargetLookupSecondaryAttribute" -EntryType Notification
                         $TrialTADU = @(Find-Aduser -Identity $SecondaryID -IdentityType $TargetLookupSecondaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed)
+                        $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
+                    }
+                    if ($TrialTADU.Count -gt 0)
+                    {
+                        $TrialTADU | Add-Member -MemberType NoteProperty -Name MatchAttribute -Value $TargetLookupSecondaryAttribute
                     }
                 }#if
                 Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Succeeded
@@ -1613,6 +1623,7 @@ end
                 SourceUserObjectExchangeRecipientType = $SADUUserObjectExchangeRecipientType
                 SourceUserPrimarySMTPAddress = $SADUCurrentPrimarySmtpAddress
                 SourceUserObject = $SADU
+                MatchAttribute = $TADU.MatchAttribute
                 TargetUserObjectIsSourceUserObject = if ($TADUGUID -eq $SADUGUID) {$true} else {$false}
                 TargetUserObjectCN = $TADU.CanonicalName
                 TargetUserObjectGUID = $TADUGUID
