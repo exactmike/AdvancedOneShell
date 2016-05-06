@@ -1717,9 +1717,9 @@ end
                 }
                 else {$TargetOperation = "None"}
             }
-            elseif ($intobj.SourceUserObjectIsExchangeRecipient -and (-not $intobj.TargetUserObjectIsExchangeRecipient))
+            elseif ($PreserveSourceMailbox)
             {
-                if ($intobj.SourceUserObjectExchangeRecipientType -like '*Mailbox*' -and $PreserveSourceMailbox)
+                if (($intobj.SourceUserObjectIsExchangeRecipient) -and ($intobj.SourceUserObjectExchangeRecipientType -like '*Mailbox*') -and (-not $intobj.TargetUserObjectIsExchangeRecipient))
                 {
                     $TargetOperation = 'ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox'
                 }
