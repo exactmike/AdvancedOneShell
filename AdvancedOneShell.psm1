@@ -1419,7 +1419,8 @@ end
                     $false
                 }
             )#SourceUserObjectIsExchangeRecipient
-            if ($SourceUserObjectIsExchangeRecipient) {
+            if ($SourceUserObjectIsExchangeRecipient)
+            {
                 try 
                 {
                     $SADUCurrentPrimarySmtpAddress = Find-PrimarySMTPAddress -ProxyAddresses $SADU.proxyaddresses -Identity $ID -ErrorAction Stop
@@ -1431,7 +1432,12 @@ end
                     continue nextID
                 }#catch
                 $SADUUserObjectExchangeRecipientType = Get-RecipientType -msExchRecipientTypeDetails $SADU.msExchRecipientTypeDetails | Select-Object -ExpandProperty Name
-                }
+            }
+            else
+            {
+                $SADUCurrentPrimarySmtpAddress = $null
+                $SADUUserObjectExchangeRecipientType = $null
+            }
             #endregion FindSADUExchangeDetails
             #region FindTADUExchangeDetails
             #Determine Target Object Exchange Recipient Status
@@ -1475,6 +1481,8 @@ end
             $writeProgressParams.currentOperation = "Get any mail contacts for $ID in target AD $TargetAD"
             Write-Progress @writeProgressParams
             $MailContacts = @()
+            $addr = $null
+            $MailContact = $null
             #look for contacts via proxy addresses
             :nextAddr foreach ($addr in $SADU.proxyaddresses) 
             {
@@ -1552,7 +1560,6 @@ end
                     }
                 }#if
             }
-            $addr = $null
             Write-Log -Message "A total of $($MailContacts.count) mail contacts were found for $ID in $TargetAD" -Verbose -EntryType Notification
             #endregion FindContacts
             #region BuildDesiredProxyAddresses
@@ -1695,6 +1702,7 @@ end
             Write-Progress @writeProgressParams
             #endregion PrepareForTargetOperation
             #region DetermineTargetOperation
+            $TargetOperation = 'None'
             if ($intobj.TargetUserObjectIsExchangeRecipient)
             {
                 switch -Wildcard ($IntObj.TargetUserObjectExchangeRecipientType)
@@ -1715,7 +1723,7 @@ end
                 {
                     $TargetOperation = 'SourceIsTarget:UpdateAndMigrateOnPremisesMailbox'
                 }
-                else {$TargetOperation = "None"}
+                else {$TargetOperation = 'None'}
             }
             elseif ($PreserveSourceMailbox)
             {
@@ -1723,13 +1731,13 @@ end
                 {
                     $TargetOperation = 'ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox'
                 }
-                else {$TargetOperation = "None"}
+                else {$TargetOperation = 'None'}
             }
             else
             {
                 if ([string]::IsNullOrWhiteSpace($intobj.DesiredCoexistenceRoutingAddress))
                 {
-                    $TargetOperation = "None"
+                    $TargetOperation = 'None'
                 }
                 else
                 { 
