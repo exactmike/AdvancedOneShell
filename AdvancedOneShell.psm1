@@ -48,13 +48,15 @@ param
 ###############################################################################################
 #Core Advanced OneShell Functions
 ###############################################################################################
-function Get-ExistingProxyAddressTypes {
+function Get-ExistingProxyAddressTypes
+{
 param(
 [object[]]$proxyAddresses
 )
 $ProxyAddresses | ForEach-Object -Process {$_.split(':')[0]} | Sort-Object | Select-Object -Unique
 }
-function Get-DesiredProxyAddresses {
+function Get-DesiredProxyAddresses
+{
 param(
     [parameter(Mandatory=$true)]
     [string[]]$CurrentProxyAddresses
@@ -155,7 +157,8 @@ if ($VerifySMTPAddressValidity)
 }
 Return $DesiredProxyAddresses
 }#function get-desiredproxyaddresses
-function Get-RecipientType {
+function Get-RecipientType
+{
 [cmdletbinding()]
 param
 (
@@ -226,7 +229,8 @@ switch ($PSCmdlet.ParameterSetName)
     }
 }
 }#function Get-RecipientType
-Function Export-FailureRecord {
+Function Export-FailureRecord
+{
 [cmdletbinding()]
 param(
 [string]$Identity
@@ -259,7 +263,8 @@ param(
     Write-Log -Message "FAILED: to write Exception Record for $identity with Exception Code $ExceptionCode and Failure Group $FailureGroup" -ErrorLog
     }
 }#Function Export-FailureRecord
-function Move-StagedADObjectToOperationalOU {
+function Move-StagedADObjectToOperationalOU
+{
 param(
 [parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
 [string[]]$Identity
@@ -293,7 +298,8 @@ process {
 }
 end{}
 }#function Move-StagedADObjectToOperationalOU
-function Update-PostMigrationMailboxUser {
+function Update-PostMigrationMailboxUser
+{
 [cmdletbinding()]
 param(
 [parameter(
@@ -572,7 +578,8 @@ if ($Global:Exceptions.count -ge 1) {
 }
 }#end
 }#function
-function Add-MSOLLicenseToUser {
+function Add-MSOLLicenseToUser
+{
 [cmdletbinding()]
 param(
     [parameter(Mandatory=$true,ParameterSetName = "Migration Wave Source Data")]
@@ -952,7 +959,8 @@ foreach ($Record in $UsersToLicense) {
 }
 }
 }
-function Set-ImmutableIDAttributeValue {
+function Set-ImmutableIDAttributeValue
+{
 [cmdletbinding(
     DefaultParameterSetName='Single'
     ,
@@ -1084,7 +1092,8 @@ End {
     Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
 }
 }
-function Set-ExchangeAttributesOnTargetObject {
+function Set-ExchangeAttributesOnTargetObject
+{
 [cmdletbinding()]
 param
 (
@@ -2550,7 +2559,8 @@ end
     }
 }#end
 }#function
-function Add-EmailAddress {
+function Add-EmailAddress
+{
 [cmdletbinding()]
 param
 (
@@ -2594,7 +2604,8 @@ param
         Write-Log -Message $_.tostring() -ErrorLog
     }
 }
-function Remove-EmailAddress {
+function Remove-EmailAddress
+{
 [cmdletbinding()]
 param
 (
@@ -2637,4 +2648,27 @@ param
         Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
         Write-Log -Message $_.tostring() -ErrorLog
     }
+}
+function Get-AllADRecipientObjects
+ {
+[cmdletbinding()]
+param
+(
+[int]$ResultSetSize = 10000
+,
+[switch]$Passthrough
+,
+[switch]$ExportData
+)
+    $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties @($AllADGroupAttributesToRetrieve + 'Members') -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $AllADContactAttributesToRetrieve -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllUsers = Get-ADUser -ResultSetSize $ResultSetSize -Filter * -Properties $AllADAttributesToRetrieve | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $AllADAttributesToRetrieve | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders
+    if ($Passthrough) {$AllMailEnabledADObjects}
+    if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
 }
