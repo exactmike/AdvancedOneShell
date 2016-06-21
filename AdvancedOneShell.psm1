@@ -2436,7 +2436,18 @@ end
                 #Start-DirectorySynchronization
                 #Build Properties for CSV Output
             }
+            $RecordCount = $ProcessedObjects.Count
+            $cr = 0
             foreach ($IntObj in $ProcessedObjects) {
+                $cr++
+                $writeProgressParams = 
+                @{
+                    Activity = "Performing Post-Attribute/Object Update Operations"
+                    CurrentOperation = "Processing Object $($IntObj.DesiredUPNAndPrimarySMTPAddress)"
+                    Status = "Processing Record $cr of $recordcount"
+                    PercentComplete = $cr/$RecordCount*100
+                }#writeProgressParams
+                Write-Progress @writeProgressParams
                 $SADUGUID = $IntObj.SourceUserObjectGUID
                 $TADUGUID = $IntObj.TargetUserObjectGUID
                 $TADU = Find-ADUser -Identity $IntObj.TargetUserObjectGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
@@ -2554,33 +2565,35 @@ end
                 $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
                 Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
             }#foreach
-            #region ReportAllResults
-            if ($Global:SEATO_ProcessedUsers.count -ge 1) {
-                Write-Log -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
-                Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
-                Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
-            }
-            if ($Global:SEATO_Exceptions.count -ge 1) {
-                Write-Log -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
-            }
-            if ($Global:SEATO_MailContactsFound.count -ge 1) {
-                Write-Log -Message "$($Global:SEATO_MailContactsFound.count) Contacts were found and are being exported."
-                Export-Data -DataToExportTitle FoundMailContacts -DataToExport $Global:SEATO_MailContactsFound -Depth 2 -DataType xml
-            }
-            if ($Global:SEATO_OriginalTargetUsers.count -ge 1) {
-                Write-Log -Message "$($Global:SEATO_OriginalTargetUsers.count) Original Target Users were attempted for processing and are being exported."
-                Export-Data -DataToExportTitle OriginalTargetUsers -DataToExport $Global:SEATO_OriginalTargetUsers -Depth 2 -DataType xml
-            }
-            if ($Global:SEATO_MailContactDeletionFailures.Count -ge 1) {
-                Write-Log -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
-                Export-Data -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
-            }
-            if ($Global:SEATO_OLMailboxSummary.count -ge 1) {
-                Write-Log -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
-                Export-Data -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
-            }
-            #endregion ReportAllResults
-    }
+        $writeProgressParams.currentOperation = "Completed Post Attribute/Object Update Operations"
+        Write-Progress @writeProgressParams -Completed
+        #region ReportAllResults
+        if ($Global:SEATO_ProcessedUsers.count -ge 1) {
+            Write-Log -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
+            Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
+            Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
+        }
+        if ($Global:SEATO_Exceptions.count -ge 1) {
+            Write-Log -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
+        }
+        if ($Global:SEATO_MailContactsFound.count -ge 1) {
+            Write-Log -Message "$($Global:SEATO_MailContactsFound.count) Contacts were found and are being exported."
+            Export-Data -DataToExportTitle FoundMailContacts -DataToExport $Global:SEATO_MailContactsFound -Depth 2 -DataType xml
+        }
+        if ($Global:SEATO_OriginalTargetUsers.count -ge 1) {
+            Write-Log -Message "$($Global:SEATO_OriginalTargetUsers.count) Original Target Users were attempted for processing and are being exported."
+            Export-Data -DataToExportTitle OriginalTargetUsers -DataToExport $Global:SEATO_OriginalTargetUsers -Depth 2 -DataType xml
+        }
+        if ($Global:SEATO_MailContactDeletionFailures.Count -ge 1) {
+            Write-Log -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
+            Export-Data -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
+        }
+        if ($Global:SEATO_OLMailboxSummary.count -ge 1) {
+            Write-Log -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
+            Export-Data -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
+        }
+        #endregion ReportAllResults
+    }# else when NOT -TestOnly
 }#end
 }#function
 function Add-EmailAddress
