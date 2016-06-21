@@ -2515,8 +2515,16 @@ end
                                 $message = "Create Move Request for $TADUGUID"
                                 Write-Log -Message $message -EntryType Attempting 
                                 $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
-                                New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop
-                                Write-Log -Message $message -EntryType Succeeded
+                                $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
+                                if ($MR.Count -eq 1)
+                                {
+                                    Write-Log -Message $message -EntryType Succeeded
+                                } else {
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                                    #Write-Log -Message $_.tostring() -ErrorLog
+                                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
+                                }
+                                
                             }
                             catch 
                             {
