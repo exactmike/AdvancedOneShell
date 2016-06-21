@@ -1896,6 +1896,7 @@ end
 	                    'msExchRemoteRecipientType'
 	                    'msExchUserCulture'
                         'msExchVersion'
+                        'targetAddress'
                     )
                     $TargetAttributestoClearForExistingMailbox = $TargetAttributestoClear | Where-Object {$_ -notin $ExemptTargetAttributesForExistingMailbox}
                     $setaduserparams1 = @{
@@ -2017,6 +2018,7 @@ end
 	                    'msExchRemoteRecipientType'
 	                    'msExchUserCulture'
                         'msExchVersion'
+                        'targetAddress'
                     )
                     $TargetAttributestoClearForExistingMailbox = $TargetAttributestoClear | Where-Object {$_ -notin $ExemptTargetAttributesForExistingMailbox}
                     $setaduserparams1 = @{
@@ -2127,9 +2129,23 @@ end
                     #clear the target attributes in target AD
                     #############################################################
                     #ClearTargetAttributes
+                    #Since this is an existing mailbox, we won't clear all the mail attributes
+                    $ExemptTargetAttributesForExistingMailbox =
+                    @(
+	                    'msExchArchiveGUID'
+                        'msExchArchiveName'
+                        'msExchMailboxGUID'
+	                    'msExchRecipientDisplayType'
+	                    'msExchRecipientTypeDetails'
+	                    'msExchRemoteRecipientType'
+	                    'msExchUserCulture'
+                        'msExchVersion'
+                        'targetAddress'
+                    )
+                    $TargetAttributestoClearForExistingMailbox = $TargetAttributestoClear | Where-Object {$_ -notin $ExemptTargetAttributesForExistingMailbox}
                     $setaduserparams1 = @{
                         Identity=$TADUGUID
-                        clear=$TargetAttributestoClear
+                        clear=$TargetAttributestoClearForExistingMailbox
                         Server=$TargetDomain
                         ErrorAction = 'Stop'
                     }#setaduserparams1
@@ -2474,7 +2490,7 @@ end
                                 }
                             }#else
                         }#'EnableRemoteMailbox'
-                        '*:UpdateAndMigrateOnPremisesMailbox'
+                        '*UpdateAndMigrateOnPremisesMailbox'
                         {
                             $SourceDataProperties = @(
                                 @{
@@ -2508,7 +2524,7 @@ end
                                 Write-Log -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                             }
-                        }#'*:UpdateAndMigrateOnPremisesMailbox'
+                        }#'UpdateAndMigrateOnPremisesMailbox'
                     }#switch
                 }
                 else {
