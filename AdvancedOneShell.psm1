@@ -2532,7 +2532,7 @@ end
                     Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                     Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
                 }
-                if ($SetMailboxForwardingStatus) {
+                if ($SetMailboxForwardingStatus -and $IntObj.TargetOperation -eq 'EnableRemoteMailbox') {
                     $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
                     $propertyset = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes EmailAddresses -ScalarAttributes PrimarySMTPAddress,ForwardingSmtpAddress
                     $OLMailboxSummary = $OLMailbox | Select-Object -Property $PropertySet
