@@ -2591,7 +2591,7 @@ param
     {
         $message = "Get Recipient for Identity $Identity"
         #Write-Log -Message $message -EntryType Attempting -Verbose
-        $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -string "-Identity $Identity -ErrorAction 'Stop'" -ErrorAction Stop
+        $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -string "-Identity $Identity -ErrorAction 'Stop'" -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
         #Write-Log -Message $message -EntryType Succeeded -Verbose
     }
     catch 
@@ -2636,7 +2636,7 @@ param
     {
         $message = "Get Recipient for Identity $Identity"
         #Write-Log -Message $message -EntryType Attempting -Verbose
-        $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -string "-Identity $Identity -ErrorAction 'Stop'" -ErrorAction Stop
+        $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -string "-Identity $Identity -ErrorAction 'Stop'" -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
         #Write-Log -Message $message -EntryType Succeeded -Verbose
     }
     catch 
