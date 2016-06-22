@@ -1132,15 +1132,15 @@ $SourceData
 [string]$TargetLookupPrimaryAttribute
 ,
 [parameter()]
-[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID''extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
+[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
 [string]$TargetLookupSecondaryAttribute
 ,
 [parameter(Mandatory = $true)]
-[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID''extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
+[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
 [string]$TargetLookupPrimaryValue
 ,
 [parameter(Mandatory = $true)]
-[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID''extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
+[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','employeeID','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID','GivenNameSurname')]
 [string]$TargetLookupSecondaryValue
 ,
 [parameter(Mandatory = $true)]
