@@ -2710,6 +2710,7 @@ param
     $ADUserAttributes = Get-OneShellVariableValue -Name ADUserAttributes
     $ADGroupAttributesWMembership = Get-OneShellVariableValue -Name ADGroupAttributesWMembership
     $ADContactAttributes = Get-OneShellVariableValue -Name ADContactAttributes
+    $ADPublicFolderAttributes = Get-OneShellVariableValue -Name ADPublicFolderAttributes
     $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties $ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
     $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
     $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $ADContactAttributes -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
