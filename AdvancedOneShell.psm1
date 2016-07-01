@@ -2705,6 +2705,8 @@ param
 ,
 [switch]$ExportData
 )
+    $AllADGroupAttributesToRetrieve = @(Get-OneShellVariableValue -Name AllADAttributesToRetrieve) + 'Members'
+    $AllADContactAttributesToRetrieve = @(Get-OneShellVariableValue -Name AllADContactAttributesToRetrieve)
     $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties @($AllADGroupAttributesToRetrieve + 'Members') -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
     $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
     $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $AllADContactAttributesToRetrieve -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
