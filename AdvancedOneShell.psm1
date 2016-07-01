@@ -2699,7 +2699,7 @@ function Get-AllADRecipientObjects
 [cmdletbinding()]
 param
 (
-[int]$ResultSetSize = 10000
+[int]$ResultSetSize = $null
 ,
 [switch]$Passthrough
 ,
