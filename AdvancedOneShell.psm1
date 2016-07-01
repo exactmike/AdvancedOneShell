@@ -2717,7 +2717,7 @@ param
     $AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
     $AllUsers = Get-ADUser -ResultSetSize $ResultSetSize -Filter * -Properties $ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
     $AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-    $AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
     $AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
     $AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders
     if ($Passthrough) {$AllMailEnabledADObjects}
