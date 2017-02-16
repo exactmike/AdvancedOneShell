@@ -1149,9 +1149,9 @@ $SourceData
 [parameter()]
 [string]$ForceTargetPrimarySMTPDomain
 ,
-[boolean]$DeleteContact = $true
+[boolean]$DeleteContact = $false
 ,
-[boolean]$DeleteSourceObject = $true
+[boolean]$DeleteSourceObject = $false
 ,
 [boolean]$DisableEmailAddressPolicyInTarget = $true
 ,
@@ -1778,7 +1778,7 @@ end
             #region PerformTargetAttributeUpdate
             if ($TestOnly)
             {
-                $IntObj
+                Write-Output -InputObject $IntObj
             }
             else
             {
@@ -1786,7 +1786,7 @@ end
             {
                 'None'
                 {
-                    $IntObj                       
+                    Write-Output -InputObject $IntObj                  
                     Write-Log -Message "Target Operation Could Not Be Determined for $SADUGUID" -Verbose -ErrorLog -EntryType Failed
                     Export-FailureRecord -Identity $ID -ExceptionCode 'TargetOperationNotDetermined' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
                     continue nextIntObj
@@ -2556,7 +2556,7 @@ end
                 }
             }
             #endregion RefreshTargetObjectRecipient
-            $IntObj
+            Write-Output -InputObject $IntObj
             }
         }#foreach
     )#ProcessedObjects
@@ -2588,7 +2588,7 @@ end
                 Write-Progress @writeProgressParams
                 $SADUGUID = $IntObj.SourceUserObjectGUID
                 $TADUGUID = $IntObj.TargetUserObjectGUID
-                $TADU = Find-ADUser -Identity $IntObj.TargetUserObjectGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
+                $TADU = Find-ADUser -Identity $TADUGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
                 $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
                 $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet -ExcludeProperty msExchPoliciesExcluded
                 #region WaitforDirectorySynchronization
