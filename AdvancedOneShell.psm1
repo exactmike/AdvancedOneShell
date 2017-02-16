@@ -1158,7 +1158,6 @@ $SourceData
 [boolean]$ReplaceUPN = $false
 ,
 [parameter(Mandatory=$false)]
-[ValidateScript({$_ -in $(Get-PSSession | Where-Object ConfigurationName -eq 'Microsoft.Exchange' | Select-Object -ExpandProperty Name | ForEach-Object {$($_ -split '-')[0]})})]
 [string]$TargetExchangeOrganization
 ,
 [switch]$UpdateTargetRecipient
