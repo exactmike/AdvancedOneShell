@@ -1195,9 +1195,11 @@ $DestinationOU
 ,
 [string]$MoveRequestWaveBatchName
 ,
-$postCutover
+[switch]$postCutover
 ,
-$PreserveSourceMailbox
+[switch]$PreserveSourceMailbox
+,
+[switch]$AddTargetToSourceGroups
 )#Param
 begin 
 {
@@ -1599,7 +1601,22 @@ end
                         $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                     }
                 }
-                $DesiredUPNAndPrimarySMTPAddress = $DesiredAlias + '@' + $ForceTargetPrimarySMTPDomain
+                [string]$DesiredUPNAndPrimarySMTPAddress = ''
+                #using switch here to accomodate other scenarios that are likely to arise
+                switch ($DesiredUPNAndPrimarySMTPAddress)
+                {
+                    #if ForceTargetPrimarySMTPDomain is used
+                    {$PSBoundParameters.ContainsKey('ForceTargetPrimarySMTPDomain')}
+                    {
+                        $DesiredUPNAndPrimarySMTPAddress = $DesiredAlias + '@' + $ForceTargetPrimarySMTPDomain
+                        Break
+                    }
+                    #otherwise use existing PrimarySMTPAddress
+                    {-not [string]::IsNullOrWhiteSpace($SADUCurrentPrimarySmtpAddress)}
+                    {
+                        $DesiredUPNAndPrimarySMTPAddress = $SADUCurrentPrimarySmtpAddress
+                    }
+                }
                 if (Test-ExchangeAlias -Alias $DesiredAlias -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization) {
                     $AliasPass = $true
                 }
@@ -1741,6 +1758,10 @@ end
                     $TargetOperation = 'ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox'
                 }
                 else {$TargetOperation = 'None'}
+            }
+            elseif (($intobj.SourceUserObjectIsExchangeRecipient) -and ($intobj.SourceUserObjectExchangeRecipientType -like '*Mailbox*') -and (-not $intobj.TargetUserObjectIsExchangeRecipient))
+            {
+                $TargetOperation = 'EnableMailUserWithMailboxGUID'
             }
             else
             {
@@ -2249,36 +2270,154 @@ end
                         continue nextIntObj
                     }#catch
                 }#ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox
+                'EnableMailUserWithMailboxGUID'
+                {
+                    #############################################################
+                    #clear the target attributes in target AD
+                    #############################################################
+                    #ClearTargetAttributes
+                    #Since this is an existing mailbox, we won't clear all the mail attributes
+                    $ExemptTargetAttributesForExistingMailbox =
+                    @(
+                    )
+                    $TargetAttributestoClearForExistingMailbox = $TargetAttributestoClear | Where-Object {$_ -notin $ExemptTargetAttributesForExistingMailbox}
+                    $setaduserparams1 = @{
+                        Identity=$TADUGUID
+                        clear=$TargetAttributestoClearForExistingMailbox
+                        Server=$TargetDomain
+                        ErrorAction = 'Stop'
+                    }#setaduserparams1
+                    #add UPN to clear list if UPN needs to be replaced
+                    if ($ReplaceUPN -and (-not [string]::IsNullOrWhiteSpace($IntObj.DesiredUPNAndPrimarySMTPAddress)) -and $IntObj.ShouldUpdateUPN) {
+                        $setaduserparams1.'Clear' += 'UserPrincipalName'
+                    }
+                    $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
+                    try {
+                        Write-Log -message $message -EntryType Attempting
+                        set-aduser @setaduserparams1
+                        Write-Log -message $message -EntryType Succeeded
+                    }#try
+                    catch {
+                        Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
+                        Write-Log -Message $_.tostring() -ErrorLog
+                        Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
+                        Continue nextIntObj
+                    }#catch
+                    #############################################################
+                    #set new values on the target attributes in target AD
+                    #############################################################
+                    $setaduserparams2 = @{
+                        identity=$TADUGUID
+                        add=@{
+                            #Adjust this section to use parameters depending on the recipient type which should be created.  Following is currently set for Existing Mailbox.
+                            msExchRecipientDisplayType = 6 #MailUser or MailContact
+                            msExchRecipientTypeDetails = 128 #MailUser
+                            msExchRemoteRecipientType = 2 #On Premises Mailbox
+                            msExchVersion = 44220983382016
+                            #targetaddress = $intobj.DesiredTargetAddress #can't do this here - must be post mailbox move
+                            #hard coding these for a customer for now
+                            msExchUsageLocation = 'US'
+                            c = 'US'
+                            co = 'United States'
+                            #countrycode = 840
+                            extensionattribute5 = $($SADUGUID.tostring())
+                        }
+                        Server=$TargetDomain
+                        ErrorAction = 'Stop'
+                    }#setaduserparams2
+                    #Disable Email Address Policy if admin user specified the parameter, otherwise leave status quo of source object
+                    if ($DisableEmailAddressPolicyInTarget) {
+                        $setaduserparams2.'add'.msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
+                    }
+                    elseif (-not [string]::IsNullOrWhiteSpace($SADU.msExchPoliciesExcluded)) {
+                        $setaduserparams2.'add'.msExchPoliciesExcluded = $SADU.msExchPoliciesExcluded
+                    }
+                    #Move Source Mailbox Attributes to Target
+                    if(-not [string]::IsNullOrWhiteSpace($SADU.msExchMailboxGUID)) {
+                    $setaduserparams2.'add'.msExchMailboxGUID = [byte[]]$($SADU.msExchMailboxGUID)
+                    }
+                    if(-not [string]::IsNullOrWhiteSpace($SADU.msExchArchiveGUID)) {
+                    $setaduserparams2.'add'.msExchArchiveGUID = [byte[]]$($SADU.msExchArchiveGUID)
+                    }
+                    if(-not [string]::IsNullOrWhiteSpace($SADU.msExchArchiveName)) {
+                    $setaduserparams2.'add'.msExchArchiveName = [byte[]]$($SADU.msExchArchiveName)
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($TADU.c)) {
+                        $setaduserparams2.'add'.msExchangeUsageLocation = $TADU.c
+                    }
+                    if(-not [string]::IsNullOrWhiteSpace($SADU.msExchangeUserCulture)) {
+                        $setaduserparams2.'add'.msExchangeUserCulture = [string]$SADU.msExchangeUserCulture
+                    }
+                    <#region NotUsing
+                            if(-not [string]::IsNullOrWhiteSpace($sadu.displayname)) {
+                            $setaduserparams2.'add'.DisplayName = [string]$($SADU.displayName)
+                            }
+                            if(-not [string]::IsNullOrWhiteSpace($sadu.department)) {
+                            $setaduserparams2.'add'.department = [string]$($SADU.department)
+                            }
+                            if(-not [string]::IsNullOrWhiteSpace($sadu.msExchMasterAccountSID)) {
+                            $setaduserparams2.'add'.msExchMasterAccountSID = [string]$($SADU.msExchMasterAccountSID)
+                    }
+                    endRegion NotUsing#>
+                    if(-not [string]::IsNullOrWhiteSpace($intobj.DesiredUPNAndPrimarySMTPAddress)) {
+                        $setaduserparams2.'add'.Mail = $intobj.DesiredUPNAndPrimarySMTPAddress
+                        $setaduserparams2.'add'.TargetAddress = 'SMTP:' + $intobj.DesiredUPNAndPrimarySMTPAddress
+                    }
+                    if(-not [string]::IsNullOrWhiteSpace($intobj.DesiredAlias)) {
+                        $setaduserparams2.'add'.mailNickName = [string]$intobj.DesiredAlias
+                    }
+                    if(-not [string]::IsNullOrWhiteSpace($IntObj.DesiredProxyAddresses)) {
+                        $setaduserparams2.'add'.proxyaddresses = [string[]]$($IntObj.DesiredProxyAddresses)
+                    }
+                    if ($ReplaceUPN -and (-not [string]::IsNullOrWhiteSpace($IntObj.DesiredUPNAndPrimarySMTPAddress)) -and $IntObj.ShouldUpdateUPN) {
+                        $setaduserparams2.'add'.UserPrincipalName = $intobj.DesiredUPNAndPrimarySMTPAddress
+                    }
+                    try {
+                        $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
+                        Write-Log -message $message -EntryType Attempting
+                        set-aduser @setaduserparams2
+                        Write-Log -message $message -EntryType Succeeded
+                    }#try
+                    catch {
+                        Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                        Write-Log -Message $_.tostring() -ErrorLog
+                        Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
+                        continue nextIntObj
+                    }#catch
+                }#ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox
             }#Switch $TargetOperation
             #endregion PerformTargetAttributeUpdate
             #region GroupMemberships
             #############################################################
             #add TADU to memberof groups from SADU
             #############################################################
-            $writeProgressParams = @{
-                Activity = "Update Target Object Group Memberships"
-                Status = "Processing Record $cr of $recordcount : $value"
-                PercentComplete = $cr/$RecordCount*100
-            }
-            $writeProgressParams.currentoperation = "Adding $TADUGUID to Groups using AD Cmdlets"
-            Write-Progress @writeProgressParams
-            if ($SADU.memberof.count -ge 1 -and ($intobj.TargetUserObjectIsSourceUserObject -eq $false)) {
-                foreach ($groupDN in $SADU.memberof) {
-                    try {
-                        $message = "Add $TADUGUID to group $groupDN"
-                        $GroupObject = Get-ADGroup -Identity $groupDN -Properties CanonicalName
-                        $Domain = Get-ADObjectDomain -adobject $GroupObject
-                        Write-Log -message $message -EntryType Attempting
-                        Add-ADGroupMember -Identity $groupDN -Members $TADUGUID -ErrorAction Stop -Confirm:$false -Server $Domain
-                        Write-Log -message $message -EntryType Succeeded
-                    }
-                    catch {
-                        Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
-                        Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$groupDN" -FailureGroup GroupMembership -RelatedObjectIdentifier $GroupDN -RelatedObjectIdentifierType DistinguishedName
-                    }
+            if ($AddTargetToSourceGroups)
+            {
+                $writeProgressParams = @{
+                    Activity = "Update Target Object Group Memberships"
+                    Status = "Processing Record $cr of $recordcount : $value"
+                    PercentComplete = $cr/$RecordCount*100
                 }
-            }
+                $writeProgressParams.currentoperation = "Adding $TADUGUID to Groups using AD Cmdlets"
+                Write-Progress @writeProgressParams
+                if ($SADU.memberof.count -ge 1 -and ($intobj.TargetUserObjectIsSourceUserObject -eq $false)) {
+                    foreach ($groupDN in $SADU.memberof) {
+                        try {
+                            $message = "Add $TADUGUID to group $groupDN"
+                            $GroupObject = Get-ADGroup -Identity $groupDN -Properties CanonicalName
+                            $Domain = Get-ADObjectDomain -adobject $GroupObject
+                            Write-Log -message $message -EntryType Attempting
+                            Add-ADGroupMember -Identity $groupDN -Members $TADUGUID -ErrorAction Stop -Confirm:$false -Server $Domain
+                            Write-Log -message $message -EntryType Succeeded
+                        }#try
+                        catch {
+                            Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
+                            Write-Log -Message $_.tostring() -ErrorLog
+                            Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$groupDN" -FailureGroup GroupMembership -RelatedObjectIdentifier $GroupDN -RelatedObjectIdentifierType DistinguishedName
+                        }#catch
+                    }#Foreach
+                }#If
+            }#if $AddTargetToSourceGroups
             #endregion GroupMemberships
             #region ContactDeletionAndAttributeCopy
             #############################################################
@@ -2368,7 +2507,7 @@ end
             #############################################################
             #Move Target Object if Target Object was Source Object
             #############################################################
-            if ($TargetOperation -eq 'SourceIsTarget:UpdateAndMigrateOnPremisesMailbox')
+            if ($TargetOperation -eq 'SourceIsTarget:UpdateAndMigrateOnPremisesMailbox' -and $PSBoundParameters.ContainsKey('DestinationOU'))
             {
                 $message = "Target User Object is the Source User Object.  Move to Destination OU: $DestinationOU"
                 try
