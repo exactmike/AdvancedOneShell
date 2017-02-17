@@ -2328,7 +2328,7 @@ end
                         identity=$TADUGUID
                         add=@{
                             #Adjust this section to use parameters depending on the recipient type which should be created.  Following is currently set for Existing Mailbox.
-                            msExchRecipientDisplayType = 6 #MailUser or MailContact
+                            msExchRecipientDisplayType = -2147483642 #MailUser or MailContact
                             msExchRecipientTypeDetails = 128 #MailUser
                             msExchRemoteRecipientType = 2 #On Premises Mailbox
                             msExchVersion = 44220983382016
@@ -2590,14 +2590,14 @@ end
             $TADUGUID = $IntObj.TargetUserObjectGUID
             Write-Log -Message "Processed Object SADU $SADUGUID and TADU $TADUGUID" -EntryType Notification -Verbose
         }
-        $ProcessedObjects
+        Write-Output -InputObject $ProcessedObjects
     }
     else
     {
         $RecordCount = $ProcessedObjects.Count
         $cr = 0
         Write-Log -Message "$recordcount Objects Processed Locally" -EntryType Notification -Verbose
-        if ($ProcessedObjects.Count -ge 1) {get
+        if ($ProcessedObjects.Count -ge 1) {
             #Start a Directory Synchronization to Azure AD Tenant 
             #Wait first for AD replication
             Write-Log -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
