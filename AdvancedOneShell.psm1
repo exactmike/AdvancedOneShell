@@ -1668,6 +1668,7 @@ end
             }
             #include contacts legacyexchangedn as x500 and proxy addresses if contacts were found
             if ($MailContacts.Count -ge 1) {$GetDesiredProxyAddressesParams.legacyExchangeDNs += $MailContacts.LegacyExchangeDN; $GetDesiredProxyAddressesParams.Recipients += $MailContacts}
+            if ($PSBoundParameters.ContainsKey('DomainsToRemove')){$GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove}
             $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
             #endregion BuildDesiredProxyAddresses
             #endregion Preparing To Generate Intermediate Object
@@ -2599,134 +2600,133 @@ end
             #Start-DirectorySynchronization
             #Build Properties for CSV Output
         }
-
-            foreach ($IntObj in $ProcessedObjects) {
-                $cr++
-                $writeProgressParams = 
-                @{
-                    Activity = "Performing Post-Attribute/Object Update Operations"
-                    CurrentOperation = "Processing Object $($IntObj.DesiredUPNAndPrimarySMTPAddress)"
-                    Status = "Processing Record $cr of $recordcount"
-                    PercentComplete = $cr/$RecordCount*100
-                }#writeProgressParams
-                Write-Progress @writeProgressParams
-                $SADUGUID = $IntObj.SourceUserObjectGUID
-                $TADUGUID = $IntObj.TargetUserObjectGUID
-                $TADU = Find-ADUser -Identity $TADUGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
-                $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
-                $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet -ExcludeProperty msExchPoliciesExcluded
-                #region WaitforDirectorySynchronization
-                #############################################################
-                #Request Directory Synchronization and Wait for Completion to Set Forwarding
-                #############################################################
-                $GUIDMATCH = $false
-                $TestDirectorySynchronizationParams = @{
-                    Identity = $IntObj.DesiredUPNAndPrimarySMTPAddress
-                    MaxSyncWaitMinutes = 5
-                    DeltaSyncExpectedMinutes = 2
-                    SyncCheckInterval = 15
-                    ExchangeOrganization = 'OL'
-                    RecipientAttributeToCheck = 'CustomAttribute5'
-                    RecipientAttributeValue = $SADUGUID
-                    InitiateSynchronization = $true
-                }
-                $DirSyncTest = Test-DirectorySynchronization @TestDirectorySynchronizationParams
-                #endregion WaitforDirectorySynchronization
-                #region SetMailboxForwarding
-                if ($DirSyncTest) {
-                    switch -Wildcard ($IntObj.TargetOperation) 
+        foreach ($IntObj in $ProcessedObjects) {
+            $cr++
+            $writeProgressParams = 
+            @{
+                Activity = "Performing Post-Attribute/Object Update Operations"
+                CurrentOperation = "Processing Object $($IntObj.DesiredUPNAndPrimarySMTPAddress)"
+                Status = "Processing Record $cr of $recordcount"
+                PercentComplete = $cr/$RecordCount*100
+            }#writeProgressParams
+            Write-Progress @writeProgressParams
+            $SADUGUID = $IntObj.SourceUserObjectGUID
+            $TADUGUID = $IntObj.TargetUserObjectGUID
+            $TADU = Find-ADUser -Identity $TADUGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
+            $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
+            $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet -ExcludeProperty msExchPoliciesExcluded
+            #region WaitforDirectorySynchronization
+            #############################################################
+            #Request Directory Synchronization and Wait for Completion to Set Forwarding
+            #############################################################
+            $GUIDMATCH = $false
+            $TestDirectorySynchronizationParams = @{
+                Identity = $IntObj.DesiredUPNAndPrimarySMTPAddress
+                MaxSyncWaitMinutes = 5
+                DeltaSyncExpectedMinutes = 2
+                SyncCheckInterval = 15
+                ExchangeOrganization = 'OL'
+                RecipientAttributeToCheck = 'CustomAttribute5'
+                RecipientAttributeValue = $SADUGUID
+                InitiateSynchronization = $true
+            }
+            $DirSyncTest = Test-DirectorySynchronization @TestDirectorySynchronizationParams
+            #endregion WaitforDirectorySynchronization
+            #region SetMailboxForwarding
+            if ($DirSyncTest) {
+                switch -Wildcard ($IntObj.TargetOperation) 
+                {
+                    'EnableRemoteMailbox'
                     {
-                        'EnableRemoteMailbox'
+                        if ($postCutover)
                         {
-                            if ($postCutover)
-                            {
-                                #don't forward, cutover already happened
-                            }
-                            else
-                            {
-                                try {
-                                    $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
-                                    Connect-Exchange -ExchangeOrganization OL
-                                    $ErrorActionPreference = 'Stop'
-                                    Write-Log -message $message -EntryType Attempting
-                                    Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
-                                    Write-Log -message $message -EntryType Succeeded
-                                    $ErrorActionPreference = 'Continue'
-                                    $SetMailboxForwardingStatus = $true
-                                }
-                                catch {
-                                    Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                    Write-Log -Message $_.tostring() -ErrorLog
-                                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
-                                    $SetMailboxForwardingStatus = $false
-                                    $ErrorActionPreference = 'Continue'
-                                }
-                            }#else
-                        }#'EnableRemoteMailbox'
-                        '*UpdateAndMigrateOnPremisesMailbox'
+                            #don't forward, cutover already happened
+                        }
+                        else
                         {
-                            $SourceDataProperties = @(
-                                @{
-                                    name='SourceSystem'
-                                    expression={$TargetExchangeOrganization}
-                                }
-                                @{
-                                    name='Alias'
-                                    expression={$_.DesiredAlias}
-                                }
-                                @{
-                                    name='Wave'
-                                    expression = {$MoveRequestWaveBatchName}
-                                }
-                                @{
-                                    name='UserPrincipalName'
-                                    expression = {$_.DesiredUPNAndPrimarySMTPAddress}
-                                }
-                            )
-                            try 
-                            {
-                                $message = "Create Move Request for $TADUGUID"
-                                Write-Log -Message $message -EntryType Attempting 
-                                $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
-                                $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
-                                if ($MR.Count -eq 1)
-                                {
-                                    Write-Log -Message $message -EntryType Succeeded
-                                } else {
-                                    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                                    #Write-Log -Message $_.tostring() -ErrorLog
-                                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
-                                }
-                                
+                            try {
+                                $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
+                                Connect-Exchange -ExchangeOrganization OL
+                                $ErrorActionPreference = 'Stop'
+                                Write-Log -message $message -EntryType Attempting
+                                Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
+                                Write-Log -message $message -EntryType Succeeded
+                                $ErrorActionPreference = 'Continue'
+                                $SetMailboxForwardingStatus = $true
                             }
-                            catch 
-                            {
-                                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                            catch {
+                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                                 Write-Log -Message $_.tostring() -ErrorLog
+                                Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
+                                $SetMailboxForwardingStatus = $false
+                                $ErrorActionPreference = 'Continue'
+                            }
+                        }#else
+                    }#'EnableRemoteMailbox'
+                    '*UpdateAndMigrateOnPremisesMailbox'
+                    {
+                        $SourceDataProperties = @(
+                            @{
+                                name='SourceSystem'
+                                expression={$TargetExchangeOrganization}
+                            }
+                            @{
+                                name='Alias'
+                                expression={$_.DesiredAlias}
+                            }
+                            @{
+                                name='Wave'
+                                expression = {$MoveRequestWaveBatchName}
+                            }
+                            @{
+                                name='UserPrincipalName'
+                                expression = {$_.DesiredUPNAndPrimarySMTPAddress}
+                            }
+                        )
+                        try 
+                        {
+                            $message = "Create Move Request for $TADUGUID"
+                            Write-Log -Message $message -EntryType Attempting 
+                            $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
+                            $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
+                            if ($MR.Count -eq 1)
+                            {
+                                Write-Log -Message $message -EntryType Succeeded
+                            } else {
+                                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                                #Write-Log -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                             }
-                        }#'UpdateAndMigrateOnPremisesMailbox'
-                    }#switch
-                }
-                else {
-                    $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
-                    Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
-                }
-                if ($SetMailboxForwardingStatus -and $IntObj.TargetOperation -eq 'EnableRemoteMailbox') {
-                    $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
-                    $propertyset = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes EmailAddresses -ScalarAttributes PrimarySMTPAddress,ForwardingSmtpAddress
-                    $OLMailboxSummary = $OLMailbox | Select-Object -Property $PropertySet
-                    $Global:SEATO_OLMailboxSummary += $OLMailboxSummary
-                }
-                #endregion SetMailboxForwarding
-                #############################################################
-                #Processing Complete: Report Results
-                #############################################################
-                $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,MailNickName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TargetOperation';e={$intobj.TargetOperation}},@{n='TimeStamp';e={Get-TimeStamp}}
-                $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
-                Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
-            }#foreach
+                                
+                        }
+                        catch 
+                        {
+                            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                            Write-Log -Message $_.tostring() -ErrorLog
+                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
+                        }
+                    }#'UpdateAndMigrateOnPremisesMailbox'
+                }#switch
+            }
+            else {
+                $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
+                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
+            }
+            if ($SetMailboxForwardingStatus -and $IntObj.TargetOperation -eq 'EnableRemoteMailbox') {
+                $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
+                $propertyset = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes EmailAddresses -ScalarAttributes PrimarySMTPAddress,ForwardingSmtpAddress
+                $OLMailboxSummary = $OLMailbox | Select-Object -Property $PropertySet
+                $Global:SEATO_OLMailboxSummary += $OLMailboxSummary
+            }
+            #endregion SetMailboxForwarding
+            #############################################################
+            #Processing Complete: Report Results
+            #############################################################
+            $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,MailNickName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TargetOperation';e={$intobj.TargetOperation}},@{n='TimeStamp';e={Get-TimeStamp}}
+            $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
+            Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
+        }#foreach IntObj in ProcessedObjects
         $writeProgressParams.currentOperation = "Completed Post Attribute/Object Update Operations"
         Write-Progress @writeProgressParams -Completed
         #region ReportAllResults
