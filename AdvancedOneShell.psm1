@@ -2584,6 +2584,12 @@ end
     {
         $RecordCount = $ProcessedObjects.Count
         Write-Log -Message "$recordcount Objects Processed for Test Only" -EntryType Notification -Verbose
+        foreach ($intObj in $ProcessedObjects)
+        {
+            $SADUGUID = $IntObj.SourceUserObjectGUID
+            $TADUGUID = $IntObj.TargetUserObjectGUID
+            Write-Log -Message "Processed Object SADU $SADUGUID and TADU $TADUGUID" -EntryType Notification -Verbose
+        }
         $ProcessedObjects
     }
     else
