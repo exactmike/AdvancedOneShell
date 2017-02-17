@@ -2330,7 +2330,7 @@ end
                             #Adjust this section to use parameters depending on the recipient type which should be created.  Following is currently set for Existing Mailbox.
                             msExchRecipientDisplayType = -2147483642 #MailUser or MailContact
                             msExchRecipientTypeDetails = 128 #MailUser
-                            msExchRemoteRecipientType = 2 #On Premises Mailbox
+                            #msExchRemoteRecipientType = 2 #On Premises Mailbox #this breaks it don't set to this value
                             msExchVersion = 44220983382016
                             #targetaddress = $intobj.DesiredTargetAddress #can't do this here - must be post mailbox move
                             #hard coding these for a customer for now
