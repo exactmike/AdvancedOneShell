@@ -57,6 +57,7 @@ $ProxyAddresses | ForEach-Object -Process {$_.split(':')[0]} | Sort-Object | Sel
 }
 function Get-DesiredProxyAddresses
 {
+[cmdletbinding()]
 param(
     [parameter(Mandatory=$true)]
     [string[]]$CurrentProxyAddresses
@@ -75,6 +76,10 @@ param(
     [string]$TargetDeliveryDomain = $global:TargetDeliveryDomain
     ,
     [switch]$VerifySMTPAddressValidity
+    ,
+    [string[]]$DomainsToRemove
+    ,
+    [string[]]$AddressesToRemove
 )
 $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
 if($DesiredPrimaryAddress) {
@@ -153,6 +158,17 @@ if ($VerifySMTPAddressValidity)
             Write-Log -Message "SMTP Proxy Address $spa appears to be invalid." -ErrorLog -EntryType Failed
             $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -ne $spa}
         }
+    }
+}
+switch ($DesiredProxyAddresses)
+{
+    {$PSBoundParameters.ContainsKey('DomainsToRemove')}
+    {
+        $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_.split('@')[1] -notin $DomainsToRemove}
+    }
+    {$PSBoundParameters.ContainsKey('AddressesToRemove')}
+    {
+        $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
     }
 }
 Return $DesiredProxyAddresses
@@ -1199,6 +1215,8 @@ $DestinationOU
 [switch]$PreserveSourceMailbox
 ,
 [switch]$AddTargetToSourceGroups
+,
+[string[]]$DomainsToRemove
 )#Param
 begin 
 {
@@ -2562,20 +2580,26 @@ end
     )#ProcessedObjects
 #endregion write
     if ($testOnly)
-    {$ProcessedObjects}
+    {
+        $RecordCount = $ProcessedObjects.Count
+        Write-Log -Message "$recordcount Objects Processed for Test Only" -EntryType Notification -Verbose
+        $ProcessedObjects
+    }
     else
     {
-            if ($ProcessedObjects.Count -ge 1) {
-                #Start a Directory Synchronization to Azure AD Tenant 
-                #Wait first for AD replication
-                Write-Log -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
-                New-Timer -units Seconds -length $ADSyncDelayInSeconds -showprogress -Frequency 5 -voice
-                #Write-Log -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
-                #Start-DirectorySynchronization
-                #Build Properties for CSV Output
-            }
-            $RecordCount = $ProcessedObjects.Count
-            $cr = 0
+        $RecordCount = $ProcessedObjects.Count
+        $cr = 0
+        Write-Log -Message "$recordcount Objects Processed Locally" -EntryType Notification -Verbose
+        if ($ProcessedObjects.Count -ge 1) {get
+            #Start a Directory Synchronization to Azure AD Tenant 
+            #Wait first for AD replication
+            Write-Log -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
+            New-Timer -units Seconds -length $ADSyncDelayInSeconds -showprogress -Frequency 5 -voice
+            #Write-Log -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
+            #Start-DirectorySynchronization
+            #Build Properties for CSV Output
+        }
+
             foreach ($IntObj in $ProcessedObjects) {
                 $cr++
                 $writeProgressParams = 
