@@ -2549,7 +2549,7 @@ end
             if ($UpdateTargetRecipient) {
                 $RecipientFound = $false
                 do {
-                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
+                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization > $null
                     $RecipientFound = Invoke-ExchangeCommand -cmdlet 'Get-Recipient' -ExchangeOrganization $TargetExchangeOrganization -string "-Identity $TADUGUID -ErrorAction SilentlyContinue" -ErrorAction SilentlyContinue
                     Start-Sleep -Seconds 1
                 }
@@ -2562,7 +2562,7 @@ end
                         ErrorAction = 'Stop'
                     }
                     $ErrorActionPreference = 'Stop'
-                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
+                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization > $null
                     Invoke-ExchangeCommand -cmdlet 'Update-Recipient' -splat $Splat -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
                     Write-Log -message $message -EntryType Succeeded
                     $ErrorActionPreference = 'Continue'
