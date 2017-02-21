@@ -1732,15 +1732,15 @@ end
         foreach ($IntObj in $IntermediateObjects) {
             #region PrepareForTargetOperation
             $cr++
-            $writeProgressParams = @{
-                    Activity = "Update Target Object"
-                    Status = "Processing Record $cr of $recordcount : $value"
-                    PercentComplete = $cr/$RecordCount*100
-                }
             $TADUGUID = $IntObj.TargetUserObjectGUID
             $SADUGUID = $IntObj.SourceUserObjectGUID
             $TADU = $IntObj.TargetUserObject
             $SADU = $IntObj.SourceUserObject
+            $writeProgressParams = @{
+                    Activity = "Update Target Object"
+                    Status = "Processing Record $cr of $recordcount : $TADUGUID"
+                    PercentComplete = $cr/$RecordCount*100
+            }
             $TargetDomain = Get-ADObjectDomain -adobject $TADU
             $writeProgressParams.currentoperation = "Updating Attributes for $TADUGUID in $TargetAD using AD Cmdlets"
             Write-Progress @writeProgressParams
@@ -2413,7 +2413,7 @@ end
             {
                 $writeProgressParams = @{
                     Activity = "Update Target Object Group Memberships"
-                    Status = "Processing Record $cr of $recordcount : $value"
+                    Status = "Processing Record $cr of $recordcount : $TADUGUID"
                     PercentComplete = $cr/$RecordCount*100
                 }
                 $writeProgressParams.currentoperation = "Adding $TADUGUID to Groups using AD Cmdlets"
@@ -2443,7 +2443,7 @@ end
             #############################################################
             $writeProgressParams = @{
                 Activity = "Process Target Object Related Contacts"
-                Status = "Processing Record $cr of $recordcount : $value"
+                Status = "Processing Record $cr of $recordcount : $TADUGUID"
                 PercentComplete = $cr/$RecordCount*100
             }
             $writeProgressParams.currentoperation = "Processing Contacts for $TADUGUID"
