@@ -1169,6 +1169,8 @@ $SourceData
 ,
 [boolean]$DeleteSourceObject = $false
 ,
+[boolean]$UpdateSourceObject = $false
+,
 [boolean]$DisableEmailAddressPolicyInTarget = $true
 ,
 [boolean]$ReplaceUPN = $false
@@ -2521,6 +2523,32 @@ end
                 }
             }
             #endregion DeleteSourceObject
+            #region UpdateSourceObject
+            #############################################################
+            #Update SADU in Source AD
+            #############################################################
+            if ($UpdateSourceObject -and ($intobj.TargetUserObjectIsSourceUserObject -eq $false)) {
+                try {
+                    $message = "Update Object $SADUGUID in AD $SourceAD"
+                    Write-Log -message $message -EntryType Attempting
+                    $Splat = @{
+                        Identity = $SADUGUID
+                        ErrorAction = 'Stop'
+                        Confirm = $false
+                        Server = Get-ADObjectDomain -adobject $SADU
+                        Replace = "@{extensionAttribute5 = $TADUGUID}"
+                        Add = "@{proxyaddresses = $($IntObj.DesiredTargetAddress.tolower())}"
+                    }
+                    Set-ADObject @splat
+                    Write-Log -message $message -EntryType Succeeded
+                }
+                catch {
+                    Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                    Write-Log -Message $_.tostring() -ErrorLog
+                    Export-FailureRecord -Identity $SADUGUID -ExceptionCode "SourceObjectRemovalFailure:$SADUGUID" -FailureGroup SourceObjectRemoval -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
+                }
+            }
+            #endregion UpdateSourceObject
             #region MoveTargetObject
             #############################################################
             #Move Target Object if Target Object was Source Object
