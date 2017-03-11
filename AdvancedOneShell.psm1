@@ -2588,8 +2588,8 @@ end
                         ErrorAction = 'Stop'
                         Confirm = $false
                         Server = Get-ADObjectDomain -adobject $SADU
-                        Replace = "@{extensionAttribute5 = $TADUGUID}"
-                        Add = "@{proxyaddresses = $($IntObj.DesiredTargetAddress.tolower())}"
+                        Replace = @{extensionAttribute5 = $TADUGUID}
+                        Add = @{proxyaddresses = $($IntObj.DesiredTargetAddress.tolower())}
                     }
                     Push-Location
                     Set-Location -Path $($SourceAD + ':\')
