@@ -1668,8 +1668,8 @@ end
                     continue nextID
             }
             else {
-                Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID | out-null
-                Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP | out-null
+                $null = Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID
+                $null = Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP
             }
             if ($AddAdditionalSMTPProxyAddress)
             {
@@ -1690,7 +1690,10 @@ end
                             }
                         }#switch
                         if (Test-ExchangeProxyAddress -ProxyAddress $ProposedAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization)
-                        {$ProposedAddress}
+                        {
+                            $ProposedAddress
+                            $null = Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $ProposedAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP
+                        }
                         else
                         {
                             Export-FailureRecord -Identity $ID -ExceptionCode 'InvalidAdditionalProxyAddress' -FailureGroup FailedToAddAdditionalProxyAddress -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID -ExceptionDetails $ProposedAddress
