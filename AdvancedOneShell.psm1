@@ -1852,6 +1852,8 @@ end
             }
             else
             {
+                Push-Location
+                Set-Location -Path $($TargetAD + ':\')
             switch ($TargetOperation) 
             {
                 'None'
@@ -2455,6 +2457,7 @@ end
                     }#catch
                 }#ConnectSourceMailboxToTarget:UpdateAndMigrateOnPremisesMailbox
             }#Switch $TargetOperation
+                Pop-Location
             #endregion PerformTargetAttributeUpdate
             #region GroupMemberships
             #############################################################
@@ -2657,7 +2660,7 @@ end
             }
             #endregion RefreshTargetObjectRecipient
             Write-Output -InputObject $IntObj
-            }
+            }#else (when -not $TestOnly)
         }#foreach
     )#ProcessedObjects
 #endregion write
