@@ -2638,6 +2638,9 @@ end
                     Start-Sleep -Seconds 1
                 }
                 until ($RecipientFound)
+                $UpdateRecipientFailedCount = 0
+                $RecipientUpdated = $false
+                do {
                 try {
                     $message = "Update-Recipient $TADUGUID in Exchange Organization $TargetExchangeOrganization"
                     Write-Log -message $message -EntryType Attempting
@@ -2649,14 +2652,19 @@ end
                     Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization > $null
                     Invoke-ExchangeCommand -cmdlet 'Update-Recipient' -splat $Splat -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
                     Write-Log -message $message -EntryType Succeeded
+                    $RecipientUpdated = $true
                     $ErrorActionPreference = 'Continue'
                 }
                 catch {
+                    $UpdateRecipientFailedCount++
                     $ErrorActionPreference = 'Continue'
                     Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                     Write-Log -Message $_.tostring() -ErrorLog
                     Export-FailureRecord -Identity $TADUGUID -ExceptionCode "UpdateRecipientFailure:$TADUGUID" -FailureGroup UpdateRecipient -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
+                    Start-Sleep -Seconds 5
                 }
+                }
+                until ($RecipientUpdated -or $UpdateRecipientFailedCount -ge 3)
             }
             #endregion RefreshTargetObjectRecipient
             Write-Output -InputObject $IntObj
