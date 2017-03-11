@@ -80,6 +80,8 @@ param(
     [string[]]$DomainsToRemove
     ,
     [string[]]$AddressesToRemove
+    ,
+    [string[]]$AddressesToAdd
 )
 $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
 if($DesiredPrimaryAddress) {
@@ -121,11 +123,14 @@ if ($VerifyAddTargetAddress) {
         throw('ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.')
     }#else
 }#if
-if ($Recipients.Count -ge 1) {
+if ($Recipients.Count -ge 1)
+{
     $RecipientProxyAddresses = @()
-    foreach ($recipient in $Recipients) {
+    foreach ($recipient in $Recipients)
+    {
         $paProperty = if (Test-Member -InputObject $recipient -Name emailaddresses) {'EmailAddresses'} elseif (Test-Member -InputObject $recipient -Name proxyaddresses ) {'proxyAddresses'} else {$null}
-        if ($paProperty) {
+        if ($paProperty)
+        {
         $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
             $rpa = @($recipient.$paProperty)
             foreach ($a in $rpa) {
@@ -146,6 +151,11 @@ if ($Recipients.Count -ge 1) {
         $DesiredProxyAddresses += @($add)
     }#if
 }#if
+if ($AddressesToAdd.Count -ge 1)
+{
+    foreach ($newadd in $AddressesToAdd)
+    {$DesiredProxyAddresses += $newadd}
+}
 if ($VerifySMTPAddressValidity)
 {
     $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
@@ -171,7 +181,7 @@ switch ($DesiredProxyAddresses)
         $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
     }
 }
-Return $DesiredProxyAddresses
+Write-Output -InputObject $DesiredProxyAddresses
 }#function get-desiredproxyaddresses
 function Get-RecipientType
 {
@@ -1165,6 +1175,12 @@ $SourceData
 [parameter()]
 [string]$ForceTargetPrimarySMTPDomain
 ,
+[switch]$AddAdditionalSMTPProxyAddress
+,
+[parameter()]
+[ValidateScript({$_.split('@')[0] -in @('Alias','PrimaryPrefix')})]
+[string[]]$AdditionalSMTPProxyAddressPattern
+,
 [boolean]$DeleteContact = $false
 ,
 [boolean]$DeleteSourceObject = $false
@@ -1636,10 +1652,12 @@ end
                         $DesiredUPNAndPrimarySMTPAddress = $SADUCurrentPrimarySmtpAddress
                     }
                 }
-                if (Test-ExchangeAlias -Alias $DesiredAlias -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization) {
+                if (Test-ExchangeAlias -Alias $DesiredAlias -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization)
+                {
                     $AliasPass = $true
                 }
-                if (Test-ExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization) {
+                if (Test-ExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization) 
+                {
                     $PrimarySMTPPass = $true
                 }
             }
@@ -1652,6 +1670,33 @@ end
             else {
                 Add-ExchangeAliasToTestExchangeAlias -Alias $DesiredAlias -ObjectGUID $TADUGUID | out-null
                 Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ObjectGUID $TADUGUID -ProxyAddressType SMTP | out-null
+            }
+            if ($AddAdditionalSMTPProxyAddress)
+            {
+                $AddressesToAdd = @(
+                    foreach ($pattern in $AdditionalSMTPProxyAddressPattern)
+                    {
+                        $PrefixPattern,$SMTPDomain = $pattern.split('@')
+                        switch ($PrefixPattern)
+                        {
+                            'Alias'
+                            {
+                                $ProposedAddress = 'smtp:' + $DesiredAlias + '@' + $SMTPDomain
+                            }
+                            'PrimaryPrefix'
+                            {
+                                $Prefix = $DesiredUPNAndPrimarySMTPAddress.Split('@')[0]
+                                $ProposedAddress = 'smtp:' + $Prefix  + '@' + $SMTPDomain
+                            }
+                        }#switch
+                        if (Test-ExchangeProxyAddress -ProxyAddress $ProposedAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization)
+                        {$ProposedAddress}
+                        else
+                        {
+                            Export-FailureRecord -Identity $ID -ExceptionCode 'InvalidAdditionalProxyAddress' -FailureGroup FailedToAddAdditionalProxyAddress -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID -ExceptionDetails $ProposedAddress
+                        }
+                    }
+                )
             }
             #Build Proxy Address Array to use in Target AD
             $writeProgressParams.currentOperation = "Build Proxy Addresses Array for $ID"
@@ -1668,6 +1713,7 @@ end
             if (-not [string]::IsNullOrWhiteSpace($ForceTargetPrimarySMTPDomain)) {
                 $GetDesiredProxyAddressesParams.DesiredPrimaryAddress=$DesiredUPNAndPrimarySMTPAddress
             }
+            if ($AddressesToAdd.Count -ge 1) {$GetDesiredProxyAddressesParams.AddressesToAdd = $AddressesToAdd}
             #include contacts legacyexchangedn as x500 and proxy addresses if contacts were found
             if ($MailContacts.Count -ge 1) {$GetDesiredProxyAddressesParams.legacyExchangeDNs += $MailContacts.LegacyExchangeDN; $GetDesiredProxyAddressesParams.Recipients += $MailContacts}
             if ($PSBoundParameters.ContainsKey('DomainsToRemove')){$GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove}
