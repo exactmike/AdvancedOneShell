@@ -2588,10 +2588,14 @@ end
                         Replace = "@{extensionAttribute5 = $TADUGUID}"
                         Add = "@{proxyaddresses = $($IntObj.DesiredTargetAddress.tolower())}"
                     }
+                    Push-Location
+                    Set-Location -Path $($SourceAD + ':\')
                     Set-ADObject @splat
                     Write-Log -message $message -EntryType Succeeded
+                    Pop-Location
                 }
                 catch {
+                    Pop-Location
                     Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                     Write-Log -Message $_.tostring() -ErrorLog
                     Export-FailureRecord -Identity $SADUGUID -ExceptionCode "SourceObjectRemovalFailure:$SADUGUID" -FailureGroup SourceObjectRemoval -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
