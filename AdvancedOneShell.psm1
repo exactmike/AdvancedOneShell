@@ -1235,6 +1235,8 @@ $DestinationOU
 [switch]$AddTargetToSourceGroups
 ,
 [string[]]$DomainsToRemove
+,
+[switch]$perUserDirSyncTest
 )#Param
 begin 
 {
@@ -2722,99 +2724,101 @@ end
             #############################################################
             #Request Directory Synchronization and Wait for Completion to Set Forwarding
             #############################################################
-            $GUIDMATCH = $false
-            $TestDirectorySynchronizationParams = @{
-                Identity = $IntObj.DesiredUPNAndPrimarySMTPAddress
-                MaxSyncWaitMinutes = 5
-                DeltaSyncExpectedMinutes = 2
-                SyncCheckInterval = 15
-                ExchangeOrganization = 'OL'
-                RecipientAttributeToCheck = 'CustomAttribute5'
-                RecipientAttributeValue = $SADUGUID
-                InitiateSynchronization = $true
-            }
-            $DirSyncTest = Test-DirectorySynchronization @TestDirectorySynchronizationParams
-            #endregion WaitforDirectorySynchronization
-            #region SetMailboxForwarding
-            if ($DirSyncTest) {
-                switch -Wildcard ($IntObj.TargetOperation) 
-                {
-                    'EnableRemoteMailbox'
+            if ($perUserDirSyncTest)
+            {
+                $TestDirectorySynchronizationParams = @{
+                    Identity = $IntObj.DesiredUPNAndPrimarySMTPAddress
+                    MaxSyncWaitMinutes = 5
+                    DeltaSyncExpectedMinutes = 2
+                    SyncCheckInterval = 15
+                    ExchangeOrganization = 'OL'
+                    RecipientAttributeToCheck = 'CustomAttribute5'
+                    RecipientAttributeValue = $SADUGUID
+                    InitiateSynchronization = $true
+                }
+                $DirSyncTest = Test-DirectorySynchronization @TestDirectorySynchronizationParams
+                #endregion WaitforDirectorySynchronization
+                #region SetMailboxForwarding
+                if ($DirSyncTest) {
+                    switch -Wildcard ($IntObj.TargetOperation) 
                     {
-                        if ($postCutover)
+                        'EnableRemoteMailbox'
                         {
-                            #don't forward, cutover already happened
-                        }
-                        else
-                        {
-                            try {
-                                $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
-                                Connect-Exchange -ExchangeOrganization OL
-                                $ErrorActionPreference = 'Stop'
-                                Write-Log -message $message -EntryType Attempting
-                                Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
-                                Write-Log -message $message -EntryType Succeeded
-                                $ErrorActionPreference = 'Continue'
-                                $SetMailboxForwardingStatus = $true
-                            }
-                            catch {
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
-                                Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
-                                $SetMailboxForwardingStatus = $false
-                                $ErrorActionPreference = 'Continue'
-                            }
-                        }#else
-                    }#'EnableRemoteMailbox'
-                    '*UpdateAndMigrateOnPremisesMailbox'
-                    {
-                        $SourceDataProperties = @(
-                            @{
-                                name='SourceSystem'
-                                expression={$TargetExchangeOrganization}
-                            }
-                            @{
-                                name='Alias'
-                                expression={$_.DesiredAlias}
-                            }
-                            @{
-                                name='Wave'
-                                expression = {$MoveRequestWaveBatchName}
-                            }
-                            @{
-                                name='UserPrincipalName'
-                                expression = {$_.DesiredUPNAndPrimarySMTPAddress}
-                            }
-                        )
-                        try 
-                        {
-                            $message = "Create Move Request for $TADUGUID"
-                            Write-Log -Message $message -EntryType Attempting 
-                            $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
-                            $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
-                            if ($MR.Count -eq 1)
+                            if ($postCutover)
                             {
-                                Write-Log -Message $message -EntryType Succeeded
-                            } else {
+                                #don't forward, cutover already happened
+                            }
+                            else
+                            {
+                                try {
+                                    $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
+                                    Connect-Exchange -ExchangeOrganization OL
+                                    $ErrorActionPreference = 'Stop'
+                                    Write-Log -message $message -EntryType Attempting
+                                    Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
+                                    Write-Log -message $message -EntryType Succeeded
+                                    $ErrorActionPreference = 'Continue'
+                                    $SetMailboxForwardingStatus = $true
+                                }
+                                catch {
+                                    Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                                    Write-Log -Message $_.tostring() -ErrorLog
+                                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
+                                    $SetMailboxForwardingStatus = $false
+                                    $ErrorActionPreference = 'Continue'
+                                }
+                            }#else
+                        }#'EnableRemoteMailbox'
+                        '*UpdateAndMigrateOnPremisesMailbox'
+                        {
+                            $SourceDataProperties = @(
+                                @{
+                                    name='SourceSystem'
+                                    expression={$TargetExchangeOrganization}
+                                }
+                                @{
+                                    name='Alias'
+                                    expression={$_.DesiredAlias}
+                                }
+                                @{
+                                    name='Wave'
+                                    expression = {$MoveRequestWaveBatchName}
+                                }
+                                @{
+                                    name='UserPrincipalName'
+                                    expression = {$_.DesiredUPNAndPrimarySMTPAddress}
+                                }
+                            )
+                            try 
+                            {
+                                $message = "Create Move Request for $TADUGUID"
+                                Write-Log -Message $message -EntryType Attempting 
+                                $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
+                                $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
+                                if ($MR.Count -eq 1)
+                                {
+                                    Write-Log -Message $message -EntryType Succeeded
+                                } else {
+                                    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+                                    #Write-Log -Message $_.tostring() -ErrorLog
+                                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
+                                }
+                                
+                            }
+                            catch 
+                            {
                                 Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                                #Write-Log -Message $_.tostring() -ErrorLog
+                                Write-Log -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                             }
-                                
-                        }
-                        catch 
-                        {
-                            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                            Write-Log -Message $_.tostring() -ErrorLog
-                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
-                        }
-                    }#'UpdateAndMigrateOnPremisesMailbox'
-                }#switch
-            }
-            else {
-                $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
-                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
+                        }#'UpdateAndMigrateOnPremisesMailbox'
+                    }#switch
+                }
+                else {
+                    $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
+                    Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                    Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
+                }
             }
             if ($SetMailboxForwardingStatus -and $IntObj.TargetOperation -eq 'EnableRemoteMailbox') {
                 $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
