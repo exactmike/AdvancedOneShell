@@ -2540,7 +2540,9 @@ end
                             Write-Log -message $message -EntryType Attempting
                             Push-Location -StackName DeleteADObject
                             Set-Location $("$TargetAD" + ":")
-                            $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID}
+                            $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop
+                            $Domain = Get-AdObjectDomain -adobject $ADGroup -ErrorAction Stop
+                            $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID;Server=$Domain}
                             Add-ADGroupMember @splat
                             Pop-Location -StackName DeleteADObject
                             Write-Log -message $message -EntryType Succeeded
@@ -2549,7 +2551,7 @@ end
                             Pop-Location -StackName DeleteADObject
                             Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
                             Write-Log -Message $_.tostring() -ErrorLog
-                            Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$group" -FailureGroup GroupMembership -RelatedObjectIdentifier $GroupDN -RelatedObjectIdentifierType DistinguishedName
+                            Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$group" -FailureGroup GroupMembership -RelatedObjectIdentifier $Group -RelatedObjectIdentifierType DistinguishedName
                         }#catch
                     }#IF
                 }#foreach
