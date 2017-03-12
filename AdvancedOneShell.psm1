@@ -2511,16 +2511,16 @@ end
                 foreach ($c in $intobj.MatchingContactObject) {
                     try {
                         Write-Log -message "Attempting: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
-                        Push-Location -StackName DeleteADObject
-                        Set-Location $("$TargetAD" + ":")
-                        $Domain = Get-AdObjectDomain -adobject $c
+                        Push-Location
+                        Set-Location $($TargetAD + ':\')
+                        $Domain = Get-AdObjectDomain -adobject $c -ErrorAction Stop
                         $splat = @{Identity = $c.distinguishedname;Confirm=$false;ErrorAction='Stop';Server=$Domain}
                         Remove-ADObject @splat
-                        Pop-Location -StackName DeleteADObject
+                        Pop-Location
                         Write-Log -message "Succeeded: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
                     }#try
                     catch {
-                        Pop-Location -StackName DeleteADObject
+                        Pop-Location
                         #$Global:ErrorActionPreference = 'Continue'
                         Write-Log -message "FAILED: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose -ErrorLog
                         Write-Log -Message $_.tostring() -ErrorLog
@@ -2533,28 +2533,26 @@ end
             #############################################################
             if ($deletecontact -and $intobj.MatchingContactObject.count -ge 1) {
                 Write-Log -message "Attempting: Add $TADUGUID to Contacts' Distribution Groups in $TargetAD" -Verbose
-                $Groups = @($intobj.MatchingContactObject.memberof)
-                foreach ($group in $Groups) {
-                    if ($group) {
-                        try {
-                            $message = "Add $TADUGUID as member to group $group"
-                            Write-Log -message $message -EntryType Attempting
-                            Push-Location -StackName DeleteADObject
-                            Set-Location $("$TargetAD" + ":")
-                            $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop
-                            $Domain = Get-AdObjectDomain -adobject $ADGroup -ErrorAction Stop
-                            $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID;Server=$Domain}
-                            Add-ADGroupMember @splat
-                            Pop-Location -StackName DeleteADObject
-                            Write-Log -message $message -EntryType Succeeded
-                        }#try
-                        catch {
-                            Pop-Location -StackName DeleteADObject
-                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                            Write-Log -Message $_.tostring() -ErrorLog
-                            Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$group" -FailureGroup GroupMembership -RelatedObjectIdentifier $Group -RelatedObjectIdentifierType DistinguishedName
-                        }#catch
-                    }#IF
+                $ContactGroupMemberships = @($intobj.MatchingContactObject | Select-Object -ExpandProperty MemberOf)
+                foreach ($group in $ContactGroupMemberships) {
+                    try {
+                        $message = "Add-ADGroupMember -Members $TADUGUID -Identity $group"
+                        Write-Log -message $message -EntryType Attempting
+                        Push-Location
+                        Set-Location $($TargetAD + ':\')
+                        $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop
+                        $Domain = Get-AdObjectDomain -adobject $ADGroup -ErrorAction Stop
+                        $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID;Server=$Domain}
+                        Add-ADGroupMember @splat
+                        Pop-Location
+                        Write-Log -message $message -EntryType Succeeded
+                    }#try
+                    catch {
+                        Pop-Location
+                        Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                        Write-Log -Message $_.tostring() -ErrorLog
+                        Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$group" -FailureGroup GroupMembership -RelatedObjectIdentifier $Group -RelatedObjectIdentifierType DistinguishedName
+                    }#catch
                 }#foreach
             }#if
             #endregion ContactDeletionAndAttributeCopy
