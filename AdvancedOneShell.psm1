@@ -2540,7 +2540,7 @@ end
                         Write-Log -message $message -EntryType Attempting
                         Push-Location
                         Set-Location $($TargetAD + ':\')
-                        $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop
+                        $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop -Properties CanonicalName
                         $Domain = Get-AdObjectDomain -adobject $ADGroup -ErrorAction Stop
                         $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID;Server=$Domain}
                         Add-ADGroupMember @splat
