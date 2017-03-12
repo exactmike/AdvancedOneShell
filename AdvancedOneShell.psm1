@@ -2513,7 +2513,8 @@ end
                         Write-Log -message "Attempting: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
                         Push-Location -StackName DeleteADObject
                         Set-Location $("$TargetAD" + ":")
-                        $splat = @{Identity = $c.distinguishedname;Confirm=$false;ErrorAction='Stop'}
+                        $Domain = Get-AdObjectDomain -adobject $c
+                        $splat = @{Identity = $c.distinguishedname;Confirm=$false;ErrorAction='Stop';Server=$Domain}
                         Remove-ADObject @splat
                         Pop-Location -StackName DeleteADObject
                         Write-Log -message "Succeeded: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
