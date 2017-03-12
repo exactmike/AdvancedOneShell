@@ -1612,6 +1612,10 @@ end
             #First, check desired Alias and desired PrimarySMTPAddress for conflicts
             $AliasAndPrimarySMTPAttemptCount = 0
             $ExemptObjectGUIDs = @($SADUGUID,$TADUGUID)
+            If ($MailContacts.Count -ge 1) 
+            {
+                $ExemptObjectGUIDs += @($MailContacts | foreach {$_.ObjectGUID.guid})
+            }
             Do {
                 $AliasPass = $false
                 $PrimarySMTPPass = $false
