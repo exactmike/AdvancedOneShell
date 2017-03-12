@@ -2508,7 +2508,7 @@ end
             Write-Progress @writeProgressParams
             if ($deletecontact -and $intobj.MatchingContactObject.count -ge 1) {
                 Write-Log -message "Attempting: Delete $($intobj.MatchingContactObject.count) Mail Contact(s) from $TargetAD" -Verbose
-                foreach ($c in $intobj.MatchinContactObject) {
+                foreach ($c in $intobj.MatchingContactObject) {
                     try {
                         Write-Log -message "Attempting: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
                         Push-Location -StackName DeleteADObject
