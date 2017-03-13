@@ -1808,7 +1808,7 @@ end
             {
                 switch -Wildcard ($IntObj.TargetUserObjectExchangeRecipientType)
                 {
-                    *Mailbox*
+                    UserMailbox
                     {
                         $TargetOperation = 'UpdateAndMigrateOnPremisesMailbox'
                     }
