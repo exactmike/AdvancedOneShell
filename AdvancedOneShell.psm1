@@ -2947,7 +2947,7 @@ param
     $cmdlet = Get-RecipientCmdlet -Recipient $Recipient -verb Set -ErrorAction Stop
     try 
     {
-        $message = "Remove Email Address $($EmailAddresses -join ',') to recipient $Identity"
+        $message = "Remove Email Address $($EmailAddresses -join ',') from recipient $Identity"
         Write-Log -Message $message -EntryType Attempting -Verbose
         $splat = @{
             Identity = $Identity
