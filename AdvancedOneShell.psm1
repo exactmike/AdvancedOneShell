@@ -2978,6 +2978,8 @@ param(
 ,
 [Parameter(Mandatory)]
 [string]$DesiredUserPrincipalName
+,
+[switch]$Verify
 )
 if ((Connect-MSOnlineTenant -Tenant $TenantName) -ne $true)
 {throw {"Could not connect to MSOnline Tenant $($TenantName)"}}
@@ -3035,7 +3037,7 @@ $splat = @{
 try
 {
     Write-Log -Message $message -EntryType Attempting
-    Set-MsolUserPrincipalName @splat
+    Set-MsolUserPrincipalName @splat | Out-Null #temporary password output thrown away
     Write-Log -Message $message -EntryType Succeeded
 }#try
 catch
@@ -3064,6 +3066,14 @@ catch
     Write-Log -Message $myerror.tostring() -ErrorLog
     throw {$myerror}
 }#catch
+if ($PSBoundParameters.ContainsKey('Verify'))
+{
+    $splat = @{
+        ObjectID = $OriginalAzureADUser.objectID.guid
+        ErrorAction = 'Stop'
+    }#splat
+    Get-MsolUser @splat
+}
 }#function
 function Get-AllADRecipientObjects
  {
