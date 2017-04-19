@@ -1011,7 +1011,7 @@ param(
 DynamicParam {
         $NewDynamicParameterParams=@{
             Name = 'ExchangeOrganization'
-            ValidateSet = @($Script:CurrentOrgAdminProfileSystems | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+            ValidateSet = @(Get-OneShellVariableValue -name 'CurrentOrgAdminProfileSystems' | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
             Alias = @('Org','ExchangeOrg')
             Position = 2
             ParameterSetName = 'Organization'
