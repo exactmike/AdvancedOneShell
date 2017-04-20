@@ -3458,7 +3458,6 @@ switch ($PSCmdlet.ParameterSetName)
     }
     'Standard'
     {
-        $Alias = $SourceAlias
     }
 }
 if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization) 
@@ -3539,29 +3538,39 @@ function Get-DesiredTargetName
 [cmdletbinding()]
 param
 (
+[parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
 [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 $SourceName
-,
-[parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-[parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-$TargetExchangeOrganization
 ,
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 [string]$ReplacementPrefix
 ,
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 [string]$SourcePrefix
+,
+[parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
+[string]$NewPrefix
 )
 $Name = $SourceName
 $Name = $Name -replace '|[^1-9a-zA-Z_-]',''
-if ($PSCmdlet.ParameterSetName -eq 'ReplacePrefix')
+switch ($PSCmdlet.ParameterSetName)
 {
-    $NewName = $Name -replace "\b$($sourcePrefix)_",''
-    $NewName = $NewName -replace "\b$($SourcePrefix)", ''
-    $NewName = $NewName -replace "$($SourcePrefix)\b", ''
-    $NewName = "$($ReplacementPrefix)_$($NewName)"
-    $Name = $NewName.Trim()
+    'ReplacePrefix'
+    {
+        $NewName = $Name -replace "\b$($sourcePrefix)_",''
+        $NewName = $NewName -replace "\b$($SourcePrefix)", ''
+        $NewName = $NewName -replace "$($SourcePrefix)\b", ''
+        $NewName = "$($ReplacementPrefix)_$($NewName)"
+        $Name = $NewName.Trim()
+    }
+    'NewPrefix'
+    {
+        $Name = $NewPrefix + '_' + $Name
+    }
+    'Standard'
+    {
+    }
 }
 $Name
 }
@@ -3670,7 +3679,7 @@ foreach ($sg in $SourceGroups)
     if ($csgCount -gt 1){$WriteProgressParams.SecondsRemaining = ($($stopwatch.Elapsed.TotalSeconds.ToInt32($null))/($csgCount - 1)) * ($sgCount - ($csgCount - 1))}
     Write-Progress @WriteProgressParams
     $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $TargetSMTPDomain
-    $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
+    $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
     $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
     $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -TargetExchangeOrganization $TargetExchangeOrganization 
     $GetDesiredProxyAddressesParams = @{
@@ -3753,7 +3762,7 @@ foreach ($sg in $SourceGroups)
     foreach ($nmc in $nonMappedTargetMemberContacts)
     {
         try {
-            $ContactDesiredName = Get-DesiredTargetName -SourceName $nmc.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
+            $ContactDesiredName = Get-DesiredTargetName -SourceName $nmc.DisplayName -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
             $ContactDesiredAlias = Get-DesiredTargetAlias -SourceAlias $nmc.MailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
             $ContactDesiredProxyAddresses = Get-DesiredProxyAddresses -CurrentProxyAddresses $nmc.proxyAddresses -DesiredOrCurrentAlias $ContactDesiredAlias -LegacyExchangeDNs $nmc.legacyExchangeDN
         }
