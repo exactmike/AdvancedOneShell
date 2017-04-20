@@ -1007,7 +1007,11 @@ param(
 ,
 [parameter(Mandatory)]
 [string]$UsageLocation
+,
+[parameter()]
+[string]$ExchangeOrganization
 )
+<#
 DynamicParam {
         $NewDynamicParameterParams=@{
             Name = 'ExchangeOrganization'
@@ -1018,6 +1022,7 @@ DynamicParam {
         }
         New-DynamicParameter @NewDynamicParameterParams -Mandatory $false
     }#DynamicParam
+#>
 begin
 {
     if ($PSBoundParameters['CheckForExchangeOnlineRecipient'] -eq $true -and $PSBoundParameters.ContainsKey('ExchangeOrganization') -eq $false)
@@ -1051,18 +1056,27 @@ process
     switch ($PSCmdlet.ParameterSetName)
     {
         'UserPrincipalName'
-        {$Identities = @($UserPrincipalName)}
+        {
+            $Identities = @($UserPrincipalName)
+            $GetMSOLUserParams = @{
+                UserPrincipalName = ''
+            }
+        }
+
         'ObjectID'
-        {$Identities = @($ObjectID)}
+        {
+            $Identities = @($ObjectID)
+            $GetMSOLUserParams = @{
+                ObjectID = ''
+            }
+        }
     }
+    $GetMSOLUserParams.ErrorAction = 'Stop'
     :nextID foreach ($ID in $Identities)
     {
-        $GetMSOLUserParams = @{
-            $IdentityParameter = $ID
-            ErrorAction = Stop
-        }
         try
         {
+            $GetMSOLUserParams.$IdentityParameter = $ID.ToString()
             $message = "Get MSOL User Object for $ID"
             Write-Log -Message $message -EntryType Attempting
             $MSOLUser = Get-MsolUser @GetMSOLUserParams
@@ -1085,8 +1099,8 @@ process
             try
             {
                 Write-Log -Message $message -EntryType Attempting
-                $EOLRecipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $exchangeOrganization -splat $getRecipientParams -ErrorAction Stop
-                Write-Log -Message $message -EntryType Success
+                $EOLRecipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $psboundparameters['exchangeOrganization'] -splat $getRecipientParams -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
             }
             catch
             {
@@ -1481,7 +1495,7 @@ process
                         catch {
                             Write-Log -message $writeProgressParams.currentoperation -Verbose -EntryType Failed -ErrorLog
                             Write-Log -Message $_.tostring() -ErrorLog
-                            Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $value -RelatedObjectIdentifierType $SourceLookupAttribute -ExceptionDetails
+                            Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $value -RelatedObjectIdentifierType $SourceLookupAttribute
                         }
                     )#TrialSADU
                     #Determine action based on the results of the lookup attempt in the target AD
@@ -1552,7 +1566,7 @@ end
                 @(
                     if (-not [string]::IsNullOrWhiteSpace($id))
                     {
-                        Find-Aduser -Identity $ID -IdentityType $TargetLookupPrimaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed
+                        Find-Aduser -Identity $ID -IdentityType $TargetLookupPrimaryAttribute -AD $TargetAD -ErrorAction Stop -AmbiguousAllowed
                     }
                 )
                 $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
@@ -1569,7 +1583,7 @@ end
                         $message = "Attempting Secondary Attribute Lookup using GivenName: $givenName Surname: $SurName"
                         $writeProgressParams.CurrentOperation = $message
                         Write-log -Message $message -EntryType Notification
-                        $TrialTADU = @(Find-ADUser -GivenName $GivenName -SurName $SurName -IdentityType GivenNameSurname -AmbiguousAllowed -ADInstance $TargetAD -ErrorAction Stop)
+                        $TrialTADU = @(Find-ADUser -GivenName $GivenName -SurName $SurName -IdentityType GivenNameSurname -AmbiguousAllowed -AD $TargetAD -ErrorAction Stop)
                         $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                     }
                     else
@@ -1577,7 +1591,7 @@ end
                         $message = "Attempting Secondary Attribute Lookup using $secondaryID in $TargetLookupSecondaryAttribute"
                         $writeProgressParams.CurrentOperation = $message
                         Write-log -Message $message -EntryType Notification
-                        $TrialTADU = @(Find-Aduser -Identity $SecondaryID -IdentityType $TargetLookupSecondaryAttribute -ADInstance $TargetAD -ErrorAction Stop -AmbiguousAllowed)
+                        $TrialTADU = @(Find-Aduser -Identity $SecondaryID -IdentityType $TargetLookupSecondaryAttribute -AD $TargetAD -ErrorAction Stop -AmbiguousAllowed)
                         $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                     }
                     if ($TrialTADU.Count -ge 1)
