@@ -3421,10 +3421,12 @@ function Get-DesiredTargetAlias
 [cmdletbinding()]
 param
 (
+[parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
 [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 $SourceAlias
 ,
+[parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
 [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 $TargetExchangeOrganization
@@ -3434,16 +3436,30 @@ $TargetExchangeOrganization
 ,
 [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
 [string]$SourcePrefix
+,
+[parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
+[string]$NewPrefix
 )
 $Alias = $SourceAlias
 $Alias = $Alias -replace '\s|[^1-9a-zA-Z_-]',''
-if ($PSCmdlet.ParameterSetName -eq 'ReplacePrefix')
+switch ($PSCmdlet.ParameterSetName)
 {
-    $NewAlias = $Alias -replace "\b$($sourcePrefix)_",''
-    $NewAlias = $NewAlias -replace "\b$($SourcePrefix)", ''
-    $NewAlias = $NewAlias -replace "$($SourcePrefix)\b", ''
-    $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
-    $Alias = $NewAlias
+    'ReplacePrefix'
+    {
+        $NewAlias = $Alias -replace "\b$($sourcePrefix)_",''
+        $NewAlias = $NewAlias -replace "\b$($SourcePrefix)", ''
+        $NewAlias = $NewAlias -replace "$($SourcePrefix)\b", ''
+        $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
+        $Alias = $NewAlias
+    }
+    'NewPrefix'
+    {
+        $Alias = $NewPrefix + '_' + $Alias
+    }
+    'Standard'
+    {
+        $Alias = $SourceAlias
+    }
 }
 if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization) 
 {
