@@ -1826,7 +1826,7 @@ end
                     }
                     3 
                     {
-                        $DesiredAlias = $SADU.givenname.substring(0,3) + $SADU.surname
+                        $DesiredAlias = $SADU.givenname + '.' + $SADU.surname
                         #remove spaces and other special characters
                         $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                     }
