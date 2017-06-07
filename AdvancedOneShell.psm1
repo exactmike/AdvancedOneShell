@@ -4088,6 +4088,8 @@ param(
 [string]$AliasPrefix
 ,
 [bool]$testOnly = $true
+,
+[switch]$AddExternalEmailAddressToSourceObject
 )
 #region GetSourceObject
 $GetRecipientParams = @{
@@ -4190,7 +4192,7 @@ Catch
     Write-Log -Message $myerror.tostring() -ErrorLog
     Throw $MyError
 }
-[pscustomobject]@{
+$IntermediateObject = [pscustomobject]@{
     Name = $SourceRecipientObject.Name
     Alias = $DesiredAlias
     EmailAddresses = $DesiredProxyAddresses
@@ -4201,8 +4203,99 @@ Catch
     CustomAttribute5 = $SourceRecipientObject.guid.guid
     CustomAttribute6 = 'Temporary Mail Routing Contact'
     EmailAddressPolicyEnabled = $false
+    AddExternalEmailAddressToSourceObject = $AddExternalEmailAddressToSourceObject
 }
 #endregion
 #region CreateTargetObject
+if ($testOnly -eq $true)
+{
+    $IntermediateObject
+}
+else
+{
+    #region UpdateSourceObject
+    if ($AddExternalEmailAddressToSourceObject)
+    {
+        Add-EmailAddress -Identity $Identity -EmailAddresses $IntermediateObject.ExternalEmailAddress -ExchangeOrganization $SourceExchangeOrganization -ErrorAction Stop
+    }
+    #endregion
+    $newMailContactParams = @{
+        Cmdlet = 'New-MailContact'
+        ExchangeOrganization = $TargetExchangeOrganization
+        ErrorAction = 'Stop'
+        Splat = @{
+            ErrorAction = 'Stop'
+            Name = $IntermediateObject.Name
+            Alias = $IntermediateObject.Alias
+            ExternalEmailaddress = $IntermediateObject.ExternalEmailAddress
+            PrimarySMTPAddress = $IntermediateObject.PrimarySMTPAddress
+            DisplayName = $IntermediateObject.DisplayName
+            OrganizationalUnit = $IntermediateObject.OrganizationalUnit
+        }
+    }
+    $setMailContactParams = @{
+        Cmdlet = 'Set-MailContact'
+        ExchangeOrganization = $TargetExchangeOrganization
+        ErrorAction = 'Stop'
+        Splat = @{
+            ErrorAction = 'Stop'
+            EmailAddresses = $IntermediateObject.EmailAddresses
+            CustomAttribute5 = $IntermediateObject.CustomAttribute5
+            CustomAttribute6 = $IntermediateObject.CustomAttribute6
+            EmailAddressPolicyEnabled = $IntermediateObject.EmailAddressPolicyEnabled
+        }
+    }
+    $message = "Create New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)"
+    Try
+    {
+        Write-Log -Message $message -EntryType Attempting
+        Invoke-ExchangeCommand @newMailContactParams
+        Write-Log -Message $message -EntryType Succeeded
+    }
+    Catch
+    {
+        $MyError = $_
+        Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+        Write-Log -Message $myerror.tostring() -ErrorLog 
+        Throw $MyError
+    }
+    $message = "Get New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)" 
+    Write-Log -Message $message -EntryType Attempting
+    $FindAttemptCount = 0
+    Do
+    {
+        Start-Sleep -Seconds 5
+        $GetMailContactParams = @{
+            Cmdlet = 'Get-MailContact'
+            ExchangeOrganization = $TargetExchangeOrganization
+            ErrorAction = 'SilentlyContinue'
+            Splat = @{
+                ErrorAction = 'SilentlyContinue'
+                Identity = $IntermediateObject.Alias
+            }
+        }
+        $NewMailContact = @(Invoke-ExchangeCommand @GetMailContactParams)
+        $FindAttemptCount++
+        if ($FindAttemptCount -ge 15)
+        {
+            Throw "Failed: $message"
+        }
+    }
+    Until ($NewMailContact.Count -eq 1)
+    $message  = "Set additional attributes for Mail Contact for Identity ($Identity) in Target Exchange Organization ($TargetExchangeOrganization)"
+    Try
+    {
+        Write-Log -Message $message -EntryType Attempting
+        Invoke-ExchangeCommand @setMailContactParams
+        Write-Log -Message $message -EntryType Succeeded
+    }
+    Catch
+    {
+        $MyError = $_
+        Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+        Write-Log -Message $myerror.tostring() -ErrorLog 
+        Throw $MyError
+    }
+}
 #endregion
 }
