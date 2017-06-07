@@ -4238,6 +4238,7 @@ else
         ExchangeOrganization = $TargetExchangeOrganization
         ErrorAction = 'Stop'
         Splat = @{
+            Identity = $IntermediateObject.Alias
             ErrorAction = 'Stop'
             EmailAddresses = $IntermediateObject.EmailAddresses
             CustomAttribute5 = $IntermediateObject.CustomAttribute5
@@ -4249,7 +4250,7 @@ else
     Try
     {
         Write-Log -Message $message -EntryType Attempting
-        Invoke-ExchangeCommand @newMailContactParams
+        $NewMailContactOutput = Invoke-ExchangeCommand @newMailContactParams
         Write-Log -Message $message -EntryType Succeeded
     }
     Catch
@@ -4259,7 +4260,7 @@ else
         Write-Log -Message $myerror.tostring() -ErrorLog 
         Throw $MyError
     }
-    $message = "Get New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)" 
+    $message = "Get New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)"
     Write-Log -Message $message -EntryType Attempting
     $FindAttemptCount = 0
     Do
@@ -4293,7 +4294,7 @@ else
     {
         $MyError = $_
         Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-        Write-Log -Message $myerror.tostring() -ErrorLog 
+        Write-Log -Message $myerror.tostring() -ErrorLog
         Throw $MyError
     }
 }
