@@ -4194,8 +4194,8 @@ Catch
     Name = $SourceRecipientObject.Name
     Alias = $DesiredAlias
     EmailAddresses = $DesiredProxyAddresses
-    ExternalEmailAddress = (($DesiredProxyAddresses | ? {$_ -like $('*@' + $targetDeliveryDomain)} | Select-Object -First 1).split[':'])[1]
-    PrimarySMTPAddress = (($DesiredProxyAddresses | ? {$_ -clike 'SMTP:*'} | Select-Object -first 1).split[':'])[1]
+    ExternalEmailAddress = ($DesiredProxyAddresses | ? {$_ -like $('*@' + $targetDeliveryDomain)} | Select-Object -First 1).split(':')[1]
+    PrimarySMTPAddress = ($DesiredProxyAddresses | ? {$_ -clike 'SMTP:*'} | Select-Object -first 1).split(':')[1]
     DisplayName = $SourceRecipientObject.DisplayName
     OrganizationalUnit = $OrganizationalUnit
     CustomAttribute5 = $SourceRecipientObject.guid.guid
