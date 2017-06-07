@@ -3265,7 +3265,7 @@ if ($PSBoundParameters.ContainsKey('Verify'))
 }
 }#function
 function Get-AllADRecipientObjects
-{
+ {
 [cmdletbinding()]
 param
 (
@@ -3276,30 +3276,22 @@ param
 [switch]$Passthrough
 ,
 [switch]$ExportData
-,
-[parameter(Mandatory)]
-$SourceAD
 )
-Push-Location
-Set-Location $($SourceAD + ':\')
-$ADUserAttributes = Get-OneShellVariableValue -Name ADUserAttributes
-$ADGroupAttributesWMembership = 'CanonicalName','CN','Created','createTimeStamp','Deleted','Description','DisplayName','DistinguishedName','dSCorePropagationData','groupType','instanceType','internetEncoding','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','managedBy','member','memberof','Modified','modifyTimeStamp','msExchAddressBookFlags','msExchArbitrationMailbox','msExchBypassAudit','msExchGroupDepartRestriction','msExchGroupJoinRestriction','msExchHideFromAddressLists','msExchMailboxAuditEnable','msExchMailboxAuditLogAgeLimit','msExchModerationFlags','msExchPoliciesIncluded','msExchProvisioningFlags','msExchRecipientDisplayType','msExchTransportRecipientSettingsFlags','msExchUMDtmfMap','msExchVersion','Name','nTSecurityDescriptor','ObjectCategory','ObjectClass','ObjectGUID','objectSid','ProtectedFromAccidentalDeletion','proxyAddresses','sAMAccountName','sAMAccountType','sDRightsEffective','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated'
-$ADDynamicGroupAttributes = 'authOrig','CanonicalName','CN','Created','createTimeStamp','Deleted','Description','DisplayName','DistinguishedName','dLMemSubmitPerms','dSCorePropagationData','instanceType','internetEncoding','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','memberOf','Modified','modifyTimeStamp','msExchAddressBookFlags','msExchALObjectVersion','msExchBypassAudit','msExchDynamicDLBaseDN','msExchDynamicDLFilter','msExchMailboxAuditEnable','msExchMailboxAuditLogAgeLimit','msExchModerationFlags','msExchPoliciesIncluded','msExchProvisioningFlags','msExchQueryFilter','msExchQueryFilterMetadata','msExchRecipientDisplayType','msExchTransportRecipientSettingsFlags','msExchVersion','Name','nTSecurityDescriptor','ObjectCategory','ObjectClass','ObjectGUID','ProtectedFromAccidentalDeletion','proxyAddresses','reportToOriginator','sDRightsEffective','showInAddressBook','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated'
-$ADContactAttributes = Get-OneShellVariableValue -Name ADContactAttributes
-$ADPublicFolderAttributes = 'CanonicalName','CN','Created','createTimeStamp','Deleted','deliveryMechanism','Description','DisplayName','DistinguishedName','dSCorePropagationData','homeMDB','instanceType','isDeleted','LastKnownParent','legacyExchangeDN','mail','mailNickname','Modified','modifyTimeStamp','msExchALObjectVersion','msExchHideFromAddressLists','msExchMailboxSecurityDescriptor','msExchPFTreeType','msExchPoliciesIncluded','Name','nTSecurityDescriptor','ObjectCategory','ObjectClass','ObjectGUID','ProtectedFromAccidentalDeletion','proxyAddresses','sDRightsEffective','showInAdvancedViewOnly','targetAddress','textEncodedORAddress','uSNChanged','uSNCreated','whenChanged','whenCreated'
-$AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties $ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
-$AllDynamicDistributionGroups = Get-ADObject -ResultSetSize $ResultSetSize -Properties $ADDynamicGroupAttributes -Filter 'ObjectClass -eq "msExchDynamicDistributionList"' | Select-Object -Property * -ExcludeProperty Property*,Item
-$AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-$AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $ADContactAttributes -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
-$AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-$AllUsers = Get-ADUser -ResultSetSize $ResultSetSize -Filter * -Properties $ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
-$AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-$AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
-$AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-$AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders + $AllDynamicDistributionGroups
-if ($Passthrough) {$AllMailEnabledADObjects}
-if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
-Pop-Location
+    $ADUserAttributes = Get-OneShellVariableValue -Name ADUserAttributes
+    $ADGroupAttributesWMembership = Get-OneShellVariableValue -Name ADGroupAttributesWMembership
+    $ADContactAttributes = Get-OneShellVariableValue -Name ADContactAttributes
+    $ADPublicFolderAttributes = Get-OneShellVariableValue -Name ADPublicFolderAttributes
+    $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties $ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $ADContactAttributes -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllUsers = Get-ADUser -ResultSetSize $ResultSetSize -Filter * -Properties $ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
+    $AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+    $AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders
+    if ($Passthrough) {$AllMailEnabledADObjects}
+    if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
 }
 function Get-ADRecipientsWithConflictingProxyAddresses 
 {
@@ -3593,14 +3585,13 @@ $GroupsDNHash = @{}
 $groups | Select-Object -ExpandProperty DistinguishedName | ForEach-Object {$GroupsDNHash.$($_) = $true}
 $OutputGroups = @{}
 $NestingLevel = 0
-$NoMoreNests = $false
 Do {
     foreach ($group in $Groups)
     {
         if ($NestingLevel -eq 0 -and $group.memberof.Count -eq 0)
         {
-            #these groups have no memberships in other groups and can only be containing groups so we create/populate them last
-            $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel -Force
+            #these groups have no memberships in other groups and can only be containting groups so we create/populate them last
+            $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
             $OutputGroups.$($Group.DistinguishedName) = $Group
             Write-Verbose -Message "added Group $($Group.DistinguishedName) to Output at Nesting Level $NestingLevel"
         }
@@ -3617,19 +3608,13 @@ Do {
                 }
             }
             if ($testGroupMemberships.ContainsValue($false))
-            {
-                #do nothing yet - wait until no $false values appear
-            }
-            else
+            #do nothing yet - wait until no $false values appear
+            {} else
             {
                 #add the group to the output at the current nesting level
-                $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel -Force
+                $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
                 $OutputGroups.$($Group.DistinguishedName) = $Group
                 Write-Verbose -Message "added Group $($Group.DistinguishedName) to Output at Nesting Level $NestingLevel"
-            }
-            if ($NestingLevel -gt 2)
-            {
-                Write-Verbose -Message "Stopping for debug of $($group.distinguishedname)"
             }
         }
     }
@@ -3641,81 +3626,12 @@ Do {
     $NestingLevel++
 }
 Until
-($NoMoreNests -eq $true)
+($NoMoreNests)
 $OrderedGroups = $OutputGroups.Values | Sort-Object -Property NestingLevel -Descending
 Write-Output $OrderedGroups
 }
-function Get-PrimaryProxyAddress
-{
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[ValidateSet('SMTP','X500','X400')]
-$AddressType
-,
-[parameter(Mandatory)]
-[string[]]$Addresses
-)
-$PrimaryProxyAddresses = @($Addresses | Where-Object -FilterScript {$_ -clike "$AddressType`:*"})
-switch ($PrimaryProxyAddresses.Count)
-{
-    0
-    {
-        throw "No Primary Address of type $AddressType found."
-    }
-    1
-    {
-        Write-Output -InputObject $PrimaryProxyAddresses[0]
-    }
-    {$_ -gt 1}
-    {
-        throw "Multiple/Ambiguous Primary Address of type $AddressType found."
-    }
-}
-}
-function Get-ProxyAddressForDomain
-{
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[ValidateSet('SMTP','X500','X400')]
-$AddressType
-,
-[parameter(Mandatory)]
-[string[]]$Addresses
-,
-[parameter(Mandatory)]
-[string]$domain
-,
-[switch]$first
-)
-$DomainProxyAddresses = @($Addresses | Where-Object -FilterScript {$_ -clike "$AddressType`:*" -and $_ -like "*@$domain"})
-switch ($DomainProxyAddresses.Count)
-{
-    0
-    {
-        throw "No Primary Address for domain $domain of type $AddressType found."
-    }
-    1
-    {
-        Write-Output -InputObject $DomainProxyAddresses[0]
-    }
-    {$_ -gt 1}
-    {
-        if ($PSBoundParameters.ContainsKey('first') -and $PSBoundParameters.first -eq $true)
-        {
-            Write-Output -InputObject $DomainProxyAddresses[0]                
-        }
-        else
-        {
-            throw "Multiple/Ambiguous Primary Address of type $AddressType found."
-        }
-    }
-}
-}
 function ProvisionGroups
 {
-#need to fix contact creation - if contact already created then just add it
 [cmdletbinding()]
 param
 (
@@ -3725,19 +3641,7 @@ $TargetGroupOU
 ,
 $TargetContactOU
 ,
-$NewPrimarySMTPDomain
-,
-$DomainToMakePrimary
-, 
-[string[]]$DomainsToAdd
-,
-[string[]]$DomainsToRemove
-,
-[string[]]$DomainsToPreserveAsPrimary
-,
-[parameter(Mandatory)]
-[ValidateSet('ShortenedAliasWithSourceGUIDSubstring','ShortenedAlias')]
-[string]$SAMAccountNamePolicy
+$TargetSMTPDomain
 ,
 $SourcePrefix
 ,
@@ -3764,21 +3668,7 @@ foreach ($sg in $SourceGroups)
     $csgCount++
     Write-Log -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
 #region Prepare
-    $GetDesiredAliasParams=@{
-        SourceAlias = $sg.mailNickName
-        TargetExchangeOrganization = $TargetExchangeOrganization
-        ErrorAction = 'Stop'
-    }
-    if ([string]::IsNullOrWhiteSpace($SourcePrefix) -eq $true)
-    {
-        $GetDesiredAliasParams.NewPrefix = $ReplacementPrefix
-    }
-    else
-    {
-        $GetDesiredAliasParams.SourcePrefix = $SourcePrefix
-        $GetDesiredAliasParams.ReplacementPrefix = $ReplacementPrefix
-    }
-    $desiredAlias = Get-DesiredTargetAlias @GetDesiredAliasParams
+    $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
     Write-Log -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
     $WriteProgressParams = 
     @{
@@ -3789,83 +3679,21 @@ foreach ($sg in $SourceGroups)
     }
     if ($csgCount -gt 1){$WriteProgressParams.SecondsRemaining = ($($stopwatch.Elapsed.TotalSeconds.ToInt32($null))/($csgCount - 1)) * ($sgCount - ($csgCount - 1))}
     Write-Progress @WriteProgressParams
-    #Get the Desired Proxy Addresses
-    #Determine Primary SMTP Address to Set
-    #new primary address assigned to all because $newPrimarySMTPDomain has a value
-    if ([string]::IsNullOrWhiteSpace($NewPrimarySMTPDomain) -eq $false)
-    {
-        $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $NewPrimarySMTPDomain
-    }
-    #use existing primary smtp address or make an exsiting address primary or add a new address as primary from DomainToMakePrimary
-    else
-    {
-        $CurrentPrimarySMTPAddress = (Get-PrimaryProxyAddress -AddressType SMTP -Addresses $sg.proxyAddresses).split(':')[1]
-        $CurrentPrimarySMTPAddressDomain = $CurrentPrimarySMTPAddress.split('@')[1]
-        if ($CurrentPrimarySMTPAddressDomain -in $DomainsToPreserveAsPrimary)
-        {
-            $desiredPrimarySMTPAddress = $CurrentPrimarySMTPAddress
-        }
-        else
-        {
-            $desiredPrimarySMTPAddress = Get-ProxyAddressForDomain -AddressType SMTP -Addresses $sg.proxyaddresses -domain $DomainToMakePrimary -first -ErrorAction SilentlyContinue
-            if ([string]::IsNullOrWhiteSpace($desiredPrimarySMTPAddress) -eq $true)
-            {
-                $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $DomainToMakePrimary
-            }
-        }
-    }
-    #any other addresses to add per DomainsToAdd
-    $AddressesToAdd = @(
-        if ($DomainsToAdd.count -ge 1)
-        {
-            foreach ($d in $DomainsToAdd)
-            {
-                Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $d
-            }
-        }
-    )
-    $GetDesiredTargetNameParams = @{
-        SourceName = $sg.DisplayName
-        #TargetExchangeOrganization = $TargetExchangeOrganization
-    }
-    if ([string]::IsNullOrWhiteSpace($SourcePrefix) -eq $true)
-    {
-        $GetDesiredTargetNameParams.NewPrefix = $ReplacementPrefix
-    }
-    else
-    {
-        $GetDesiredTargetNameParams.SourcePrefix = $SourcePrefix
-        $GetDesiredTargetNameParams.ReplacementPrefix = $ReplacementPrefix
-    }
-    $desiredName = Get-DesiredTargetName @GetDesiredTargetNameParams
+    $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $TargetSMTPDomain
+    $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
     $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
     $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -TargetExchangeOrganization $TargetExchangeOrganization 
-    $targetRecipientLegDNs = @($targetRecipients | select -ExpandProperty LegacyExchangeDN)
-    $targetRecipientLegDNs += $sg.legacyExchangeDN
     $GetDesiredProxyAddressesParams = @{
         CurrentProxyAddresses = $sg.proxyAddresses
         DesiredPrimaryAddress = $desiredPrimarySMTPAddress
         DesiredOrCurrentAlias = $desiredAlias
         Recipients = $targetRecipients
-        LegacyExchangeDNs = $targetRecipientLegDNs
-    }
-    if ($AddressesToAdd.Count -ge 1)
-    {
-        $GetDesiredProxyAddressesParams.AddressesToAdd = $AddressesToAdd
-    }
-    if ($DomainsToRemove.Count -ge 1)
-    {
-        $GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove
+        LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
     }
     $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
 #endregion Prepare 
 #region GetAndMapGroupMembers
-    $AllSourceMembers =@(
-        if ($sg.member.count -ge 1)
-        {
-            $sg.Member | foreach {if ($SourceRecipientDNHash.ContainsKey($_)) {$SourceRecipientDNHash.$($_)}}
-        }
-    )
+    $AllSourceMembers =@($sg.Members | foreach {if ($SourceRecipientDNHash.ContainsKey($_)) {$SourceRecipientDNHash.$($_)}})
     $AllSourceUserMembers = @($AllSourceMembers | ? ObjectClass -eq 'User')
     $AllSourceGroupMembers =@($AllSourceMembers | ? ObjectClass -eq 'Group')
     $AllSourceContactMembers = @($AllSourceMembers | ? ObjectClass -eq 'Contact')
@@ -3935,38 +3763,13 @@ foreach ($sg in $SourceGroups)
     foreach ($nmc in $nonMappedTargetMemberContacts)
     {
         try {
-            $GetDesiredTargetNameParams = @{
-                SourceName = $nmc.DisplayName
-            }
-            if ([string]::IsNullOrWhiteSpace($SourcePrefix) -eq $true)
-            {
-                $GetDesiredTargetNameParams.NewPrefix = $ReplacementPrefix
-            }
-            else
-            {
-                $GetDesiredTargetNameParams.SourcePrefix = $SourcePrefix
-                $GetDesiredTargetNameParams.ReplacementPrefix = $ReplacementPrefix
-            }
-            $ContactDesiredName = Get-DesiredTargetName @GetDesiredTargetNameParams
-            $GetDesiredAliasParams=@{
-                SourceAlias = $nmc.mailNickName
-                TargetExchangeOrganization = $TargetExchangeOrganization
-                ErrorAction = 'Stop'
-            }
-            if ([string]::IsNullOrWhiteSpace($SourcePrefix) -eq $true)
-            {
-                $GetDesiredAliasParams.NewPrefix = $ReplacementPrefix
-            }
-            else
-            {
-                $GetDesiredAliasParams.SourcePrefix = $SourcePrefix
-                $GetDesiredAliasParams.ReplacementPrefix = $ReplacementPrefix
-            }
-            $ContactDesiredAlias = Get-DesiredTargetAlias @GetDesiredAliasParams
+            $ContactDesiredName = Get-DesiredTargetName -SourceName $nmc.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
+            $ContactDesiredAlias = Get-DesiredTargetAlias -SourceAlias $nmc.MailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
             $ContactDesiredProxyAddresses = Get-DesiredProxyAddresses -CurrentProxyAddresses $nmc.proxyAddresses -DesiredOrCurrentAlias $ContactDesiredAlias -LegacyExchangeDNs $nmc.legacyExchangeDN
         }
         catch {
             Export-Data -DataToExport $nmc -DataToExportTitle "ContactCreationFailure-$($nmc.MailNickName)" -DataType json -Depth 3
+            Continue
         }
         $intermediateContactObject = 
         [pscustomobject]@{
@@ -4002,34 +3805,21 @@ foreach ($sg in $SourceGroups)
             {
                 $setMailContactParams.HiddenFromAddressListsEnabled = $true
             }
-            $message = "Find or Create Contact $ContactDesiredAlias for group $desiredAlias."
+            $message = "Create Contact $ContactDesiredAlias for group $desiredAlias."
             try
             {
                 Write-Log -Message $message -EntryType Attempting
-                Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization | out-null
-                $theContact = $null
-                $GetMailContactParams = @{
-                    Cmdlet = 'Get-MailContact'
-                    TargetExchangeOrganization = $targetExchangeOrganization
-                    ErrorAction = 'SilentlyContinue'
-                    Splat = @{
-                        Identity = $ContactDesiredAlias
-                        ErrorAction = 'SilentlyContinue'
-                    }
-                }
-                $theContact = Invoke-ExchangeCommand @GetMailContactParams
-                if ($theContact -eq $null)
-                {
-                    $theContact = Invoke-ExchangeCommand -cmdlet 'New-MailContact' -ExchangeOrganization $TargetExchangeOrganization -splat $newMailContactParams
-                }
-                $mappedTargetMemberContacts += $theContact.guid.guid
-                $AllMappedMembersToAddAtCreation += $theContact.guid.guid
+                Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
+                $newContact = Invoke-ExchangeCommand -cmdlet 'New-MailContact' -ExchangeOrganization $TargetExchangeOrganization -splat $newMailContactParams
+                $mappedTargetMemberContacts += $newContact.guid.guid
+                $AllMappedMembersToAddAtCreation += $newContact.guid.guid
+                Write-Log -Message $message -EntryType Failed
                 $message = "Find Newly Created Contact $ContactDesiredAlias."
                 $found = $false
                 do
                 {
                     #Write-Log -Message $message -EntryType Attempting
-                    $Contact = @(Invoke-ExchangeCommand -cmdlet 'Get-MailContact' -string "-Identity $ContactDesiredAlias" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction 'SilentlyContinue')
+                    $Contact = @(Invoke-ExchangeCommand -cmdlet 'Get-MailContact' -string "-Identity $ContactDesiredAlias" -ExchangeOrganization $TargetExchangeOrganization)
                     if ($Contact.Count -eq 1)
                     {
                         Write-Log -Message $message -EntryType Succeeded
@@ -4077,16 +3867,10 @@ foreach ($sg in $SourceGroups)
         Members = @($AllMappedMembersToAddAtCreation | Where-Object {$_ -ne $null})
         Type = 'Distribution'
         Alias = $desiredAlias
+        SAMAccountName = $desiredAlias.substring(0,$AliasLength)#"$($ReplacementPrefix)_" + $sg.ObjectGUID.guid.Substring(24,12)
         PrimarySmtpAddress = $desiredPrimarySMTPAddress
         OrganizationalUnit = $TargetGroupOU
         ErrorAction = 'Stop'
-    }
-    switch ($SAMAccountNamePolicy)
-    {
-        'ShortenedAlias'
-        {$newDistributionGroupParams.SAMAccountName = $desiredAlias.substring(0,$AliasLength)}
-        'ShortenedAliasWithSourceGUIDSubstring'
-        {$newDistributionGroupParams.SAMAccountName = $desiredAlias.substring(0,($AliasLength - 4)) + $sg.ObjectGUID.guid.Substring(32,4)}
     }
     $setDistributionGroupParams = 
     @{
@@ -4269,4 +4053,156 @@ switch ($RecipientTypeDetails)
     'PublicFolder' {$value = $null}
 }
 Write-Output -InputObject $Value
+}
+Function New-MailFlowContactFromMailbox
+{
+[cmdletbinding()]
+param(
+[parameter(Mandatory)]
+[string]$Identity
+,
+[parameter(Mandatory)]
+[string]$SourceExchangeOrganization
+,
+[parameter(Mandatory)]
+[string]$TargetExchangeOrganization
+,
+[parameter(Mandatory)]
+[string]$OrganizationalUnit
+,
+[parameter()]
+[string[]]$DomainsToRemove
+,
+[parameter()]
+[string[]]$AddressesToRemove
+,
+[parameter()]
+[string[]]$AddressesToAdd
+,
+[parameter()]
+[string]$TargetAddress
+,
+[parameter()]
+[string]$TargetDeliveryDomain
+,
+[string]$AliasPrefix
+,
+[bool]$testOnly = $true
+)
+#region GetSourceObject
+$GetRecipientParams = @{
+    cmdlet = 'Get-Recipient'
+    ExchangeOrganization = $SourceExchangeOrganization
+    ErrorAction = 'Stop'
+    splat = @{
+        Identity = $Identity
+        ErrorAction = 'Stop'
+    }
+}
+$message = "Get Recipient Object for Identity ($Identity) from Source Exchange Organization ($SourceExchangeOrganization)"
+Try 
+{
+    Write-Log -Message $message -EntryType Attempting
+    $SourceRecipientObject = @(Invoke-ExchangeCommand @GetRecipientParams)
+    Write-Log -Message $message -EntryType Succeeded
+}
+Catch
+{
+    $MyError = $_
+    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+    Write-Log -Message $myerror.tostring() -ErrorLog
+    Throw $MyError
+}
+$GetFullRecipientCmdlet = Get-RecipientCmdlet -Recipient $SourceRecipientObject -verb Get -ErrorAction Stop
+$GetFullRecipientCmdletParams = @{
+    cmdlet = $GetFullRecipientCmdlet
+    ExchangeOrganization = $SourceExchangeOrganization
+    ErrorAction = 'Stop'
+    splat = @{
+        Identity = $Identity
+        ErrorAction = 'Stop'
+    }
+}
+Try 
+{
+    Write-Log -Message $message -EntryType Attempting
+    $SourceRecipientObject = @(Invoke-ExchangeCommand @GetFullRecipientCmdletParams)
+    Write-Log -Message $message -EntryType Succeeded
+}
+Catch
+{
+    $MyError = $_
+    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+    Write-Log -Message $myerror.tostring() -ErrorLog
+    Throw $MyError
+}
+#endregion
+#region CreateIntermediateObject
+$GetDesiredTargetAliasParams = @{
+    SourceAlias = $aliasPrefix + $SourceRecipientObject.Alias
+    TargetExchangeOrganization = $TargetExchangeOrganization
+    ErrorAction = 'Stop'
+}
+$message = "Get Desired Alias for Identity ($Identity) from Target Exchange Organization ($TargetExchangeOrganization)"
+Try 
+{
+    Write-Log -Message $message -EntryType Attempting
+    $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
+    Write-Log -Message $message -EntryType Succeeded
+}
+Catch
+{
+    $MyError = $_
+    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+    Write-Log -Message $myerror.tostring() -ErrorLog
+    Throw $MyError
+}
+$GetDesiredProxyAddressesParams = @{
+    CurrentProxyAddresses = $SourceRecipientObject.emailAddresses
+    DesiredOrCurrentAlias = $DesiredAlias
+    LegacyExchangeDNs = $SourceRecipientObject.LegacyExchangeDN
+    VerifyAddTargetAddress = $true
+    TargetDeliveryDomain = $TargetDeliveryDomain
+}
+if ($DomainsToRemove.Count -ge 1)
+{
+    $GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove
+}
+if ($AddressesToAdd.Count -ge 1)
+{
+    $GetDesiredProxyAddressesParams.AddressesToAdd = $AddressesToAdd
+}
+if ($AddressesToRemove.Count -ge 1)
+{
+    $GetDesiredProxyAddressesParams.AddressesToAdd = $AddressesToRemove
+}
+$message = "Get Desired ProxyAddresses for Identity ($Identity)"
+Try 
+{
+    Write-Log -Message $message -EntryType Attempting
+    $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
+    Write-Log -Message $message -EntryType Succeeded
+}
+Catch
+{
+    $MyError = $_
+    Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
+    Write-Log -Message $myerror.tostring() -ErrorLog
+    Throw $MyError
+}
+[pscustomobject]@{
+    Name = $SourceRecipientObject.Name
+    Alias = $DesiredAlias
+    EmailAddresses = $DesiredProxyAddresses
+    ExternalEmailAddress = (($DesiredProxyAddresses | ? {$_ -like $('*@' + $targetDeliveryDomain)} | Select-Object -First 1).split[':'])[1]
+    PrimarySMTPAddress = (($DesiredProxyAddresses | ? {$_ -clike 'SMTP:*'} | Select-Object -first 1).split[':'])[1]
+    DisplayName = $SourceRecipientObject.DisplayName
+    OrganizationalUnit = $OrganizationalUnit
+    CustomAttribute5 = $SourceRecipientObject.guid.guid
+    CustomAttribute6 = 'Temporary Mail Routing Contact'
+    EmailAddressPolicyEnabled = $false
+}
+#endregion
+#region CreateTargetObject
+#endregion
 }
