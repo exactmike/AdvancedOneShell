@@ -1292,7 +1292,7 @@ function Set-ImmutableIDAttributeValue
                     Write-Log -Message $LogString -EntryType Succeeded
                     if ($ExportResults)
                     {
-                        $Successes += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}}
+                        $Successes += $CurrentObject | Select-Object ObjectGUID,Domain,ObjectClass,DistinguishedName,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}}
                     }#if
                 }#if
             }#try
@@ -1302,7 +1302,7 @@ function Set-ImmutableIDAttributeValue
                 Write-Log -Message $_.ToString() -ErrorLog
                 if ($ExportResults)
                 {
-                    $Failures += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
+                    $Failures += $CurrentObject | Select-Object ObjectGUID,Domain,ObjectClass,DistinguishedName,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
                 }#if
             }#Catch
         }#ForEach-Object
