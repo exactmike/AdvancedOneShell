@@ -1270,7 +1270,7 @@ function Set-ImmutableIDAttributeValue
         }#Try
         catch
         {
-            Write-Log -Message $logstring -Verbose -EntryType Failed
+            Write-Log -Message $message -Verbose -EntryType Failed
             Write-Log -Message $_.tostring() -ErrorLog
             if ($ExportResults -and $PSCmdlet.ParameterSetName -eq 'Single')
             {
