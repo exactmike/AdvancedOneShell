@@ -1292,7 +1292,8 @@ function Set-ImmutableIDAttributeValue
                     Write-Log -Message $LogString -EntryType Succeeded
                     if ($ExportResults)
                     {
-                        $Successes += $CurrentObject | Select-Object ObjectGUID,Domain,ObjectClass,DistinguishedName,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}}
+                        $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})
+                        $Successes += $CurrentObject | Select-Object -Property $attributeset
                     }#if
                 }#if
             }#try
@@ -1302,7 +1303,8 @@ function Set-ImmutableIDAttributeValue
                 Write-Log -Message $_.ToString() -ErrorLog
                 if ($ExportResults)
                 {
-                    $Failures += $CurrentObject | Select-Object ObjectGUID,Domain,ObjectClass,DistinguishedName,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
+                    $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})                    
+                    $Failures += $CurrentObject | Select-Object -Property $attributeset
                 }#if
             }#Catch
         }#ForEach-Object
