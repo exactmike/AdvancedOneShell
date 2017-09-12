@@ -3,46 +3,46 @@
 ###############################################################################################
 function Get-AOSVariable
 {
-param
-(
-[string]$Name
-)
+    param
+    (
+    [string]$Name
+    )
     Get-Variable -Scope Script -Name $name 
 }
 function Get-AOSVariableValue
 {
-param
-(
-[string]$Name
-)
+    param
+    (
+    [string]$Name
+    )
     Get-Variable -Scope Script -Name $name -ValueOnly
 }
 function Set-AOSVariable
 {
-param
-(
-[string]$Name
-,
-$Value
-)
+    param
+    (
+    [string]$Name
+    ,
+    $Value
+    )
     Set-Variable -Scope Script -Name $Name -Value $value  
 }
 function New-AOSVariable
 {
-param 
-(
-[string]$Name
-,
-$Value
-)
+    param 
+    (
+    [string]$Name
+    ,
+    $Value
+    )
     New-Variable -Scope Script -Name $name -Value $Value
 }
 function Remove-AOSVariable
 {
-param
-(
-[string]$Name
-)
+    param
+    (
+    [string]$Name
+    )
     Remove-Variable -Scope Script -Name $name
 }
 ###############################################################################################
@@ -50,227 +50,227 @@ param
 ###############################################################################################
 function Get-ExistingProxyAddressTypes
 {
-param(
-[object[]]$proxyAddresses
-)
-$ProxyAddresses | ForEach-Object -Process {$_.split(':')[0]} | Sort-Object | Select-Object -Unique
+    param(
+    [object[]]$proxyAddresses
+    )
+    $ProxyAddresses | ForEach-Object -Process {$_.split(':')[0]} | Sort-Object | Select-Object -Unique
 }
 function Get-DesiredProxyAddresses
 {
-[cmdletbinding()]
-param(
-    [parameter(Mandatory=$true)]
-    [string[]]$CurrentProxyAddresses
-    ,
-    [string]$DesiredPrimaryAddress
-    ,
-    [string]$DesiredOrCurrentAlias
-    ,
-    [string[]]$LegacyExchangeDNs
-    ,
-    [psobject[]]$Recipients
-    ,
-    [parameter()]
-    [switch]$VerifyAddTargetAddress
-    ,
-    [string]$TargetDeliveryDomain = $global:TargetDeliveryDomain
-    ,
-    [switch]$VerifySMTPAddressValidity
-    ,
-    [string[]]$DomainsToRemove
-    ,
-    [string[]]$AddressesToRemove
-    ,
-    [string[]]$AddressesToAdd
-)
-$DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
-if($DesiredPrimaryAddress) {
-    if (($currentPrimary = $CurrentProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | foreach {$_.split(':')[1]}).count -eq 1) {
-        if ($currentPrimary -ceq $DesiredPrimaryAddress) {
+    [cmdletbinding()]
+    param(
+        [parameter(Mandatory=$true)]
+        [string[]]$CurrentProxyAddresses
+        ,
+        [string]$DesiredPrimaryAddress
+        ,
+        [string]$DesiredOrCurrentAlias
+        ,
+        [string[]]$LegacyExchangeDNs
+        ,
+        [psobject[]]$Recipients
+        ,
+        [parameter()]
+        [switch]$VerifyAddTargetAddress
+        ,
+        [string]$TargetDeliveryDomain = $global:TargetDeliveryDomain
+        ,
+        [switch]$VerifySMTPAddressValidity
+        ,
+        [string[]]$DomainsToRemove
+        ,
+        [string[]]$AddressesToRemove
+        ,
+        [string[]]$AddressesToAdd
+    )
+    $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
+    if($DesiredPrimaryAddress) {
+        if (($currentPrimary = $CurrentProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | foreach {$_.split(':')[1]}).count -eq 1) {
+            if ($currentPrimary -ceq $DesiredPrimaryAddress) {
+            }#if
+            else {
+                $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "smtp:$DesiredPrimaryAddress"})
+                $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "SMTP:$currentPrimary"})
+                $DesiredProxyAddresses += $("smtp:$currentPrimary")
+                $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
+            }#else
+        }#if
+    }#if
+    if ($LegacyExchangeDNs.Count -ge 1) {
+        foreach ($LED in $LegacyExchangeDNs) {
+            $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
+            $type = 'X500'
+            if ($existingProxyAddressTypes -ccontains $type) {
+                $type = $type.ToLower()
+            }
+            $newX500 = "$type`:$LED"
+            if ($newX500 -in $DesiredProxyAddresses) {
+            }
+            else {
+                $DesiredProxyAddresses += $newX500
+            }
+        }
+    }
+    if ($VerifyAddTargetAddress) {
+        if ($DesiredOrCurrentAlias -and $TargetDeliveryDomain) {
+            $DesiredTargetAddress = "smtp:$DesiredOrCurrentAlias@$TargetDeliveryDomain"
+            if (($DesiredProxyAddresses | Where-Object {$_ -eq $DesiredTargetAddress}).count -lt 1) {
+                $DesiredProxyAddresses += $DesiredTargetAddress
+            }#if
         }#if
         else {
-            $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "smtp:$DesiredPrimaryAddress"})
-            $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "SMTP:$currentPrimary"})
-            $DesiredProxyAddresses += $("smtp:$currentPrimary")
-            $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
+            Write-Log -Message 'ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.'
+            throw('ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.')
         }#else
     }#if
-}#if
-if ($LegacyExchangeDNs.Count -ge 1) {
-    foreach ($LED in $LegacyExchangeDNs) {
-        $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
-        $type = 'X500'
-        if ($existingProxyAddressTypes -ccontains $type) {
-            $type = $type.ToLower()
-        }
-        $newX500 = "$type`:$LED"
-        if ($newX500 -in $DesiredProxyAddresses) {
-        }
-        else {
-            $DesiredProxyAddresses += $newX500
-        }
-    }
-}
-if ($VerifyAddTargetAddress) {
-    if ($DesiredOrCurrentAlias -and $TargetDeliveryDomain) {
-        $DesiredTargetAddress = "smtp:$DesiredOrCurrentAlias@$TargetDeliveryDomain"
-        if (($DesiredProxyAddresses | Where-Object {$_ -eq $DesiredTargetAddress}).count -lt 1) {
-            $DesiredProxyAddresses += $DesiredTargetAddress
+    if ($Recipients.Count -ge 1)
+    {
+        $RecipientProxyAddresses = @()
+        foreach ($recipient in $Recipients)
+        {
+            $paProperty = if (Test-Member -InputObject $recipient -Name emailaddresses) {'EmailAddresses'} elseif (Test-Member -InputObject $recipient -Name proxyaddresses ) {'proxyAddresses'} else {$null}
+            if ($paProperty)
+            {
+            $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
+                $rpa = @($recipient.$paProperty)
+                foreach ($a in $rpa) {
+                    $type = $a.split(':')[0]
+                    $address = $a.split(':')[1]
+                    if ($existingProxyAddressTypes -ccontains $type) {
+                        $la = $type.tolower() + ':' +  $address
+                    }
+                    else {
+                        $la = $a
+                    }
+                    $RecipientProxyAddresses += $la
+                }#foreach
+            }#if
+        }#foreach
+        if ($RecipientProxyAddresses.count -ge 1) {
+            $add = @($RecipientProxyAddresses | Where-Object {$DesiredProxyAddresses -inotcontains $_})
+            $DesiredProxyAddresses += @($add)
         }#if
     }#if
-    else {
-        Write-Log -Message 'ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.'
-        throw('ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.')
-    }#else
-}#if
-if ($Recipients.Count -ge 1)
-{
-    $RecipientProxyAddresses = @()
-    foreach ($recipient in $Recipients)
+    if ($AddressesToAdd.Count -ge 1)
     {
-        $paProperty = if (Test-Member -InputObject $recipient -Name emailaddresses) {'EmailAddresses'} elseif (Test-Member -InputObject $recipient -Name proxyaddresses ) {'proxyAddresses'} else {$null}
-        if ($paProperty)
-        {
-        $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
-            $rpa = @($recipient.$paProperty)
-            foreach ($a in $rpa) {
-                $type = $a.split(':')[0]
-                $address = $a.split(':')[1]
-                if ($existingProxyAddressTypes -ccontains $type) {
-                    $la = $type.tolower() + ':' +  $address
-                }
-                else {
-                    $la = $a
-                }
-                $RecipientProxyAddresses += $la
-            }#foreach
-        }#if
-    }#foreach
-    if ($RecipientProxyAddresses.count -ge 1) {
-        $add = @($RecipientProxyAddresses | Where-Object {$DesiredProxyAddresses -inotcontains $_})
-        $DesiredProxyAddresses += @($add)
-    }#if
-}#if
-if ($AddressesToAdd.Count -ge 1)
-{
-    foreach ($newadd in $AddressesToAdd)
-    {$DesiredProxyAddresses += $newadd}
-}
-if ($VerifySMTPAddressValidity)
-{
-    $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
-    foreach ($spa in $SMTPProxyAddresses)
+        foreach ($newadd in $AddressesToAdd)
+        {$DesiredProxyAddresses += $newadd}
+    }
+    if ($VerifySMTPAddressValidity)
     {
-        if (Test-EmailAddress -EmailAddress $spa.split(':')[1])
-        {}
-        else
+        $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
+        foreach ($spa in $SMTPProxyAddresses)
         {
-            Write-Log -Message "SMTP Proxy Address $spa appears to be invalid." -ErrorLog -EntryType Failed
-            $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -ne $spa}
+            if (Test-EmailAddress -EmailAddress $spa.split(':')[1])
+            {}
+            else
+            {
+                Write-Log -Message "SMTP Proxy Address $spa appears to be invalid." -ErrorLog -EntryType Failed
+                $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -ne $spa}
+            }
         }
     }
-}
-switch ($DesiredProxyAddresses)
-{
-    {$PSBoundParameters.ContainsKey('DomainsToRemove')}
+    switch ($DesiredProxyAddresses)
     {
-        $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_.split('@')[1] -notin $DomainsToRemove}
+        {$PSBoundParameters.ContainsKey('DomainsToRemove')}
+        {
+            $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_.split('@')[1] -notin $DomainsToRemove}
+        }
+        {$PSBoundParameters.ContainsKey('AddressesToRemove')}
+        {
+            $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
+        }
     }
-    {$PSBoundParameters.ContainsKey('AddressesToRemove')}
-    {
-        $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
-    }
-}
-Write-Output -InputObject $DesiredProxyAddresses
+    Write-Output -InputObject $DesiredProxyAddresses
 }#function get-desiredproxyaddresses
 function Get-RecipientType
 {
-[cmdletbinding()]
-param
-(
-[parameter(ParameterSetName = 'DisplayType')]
-[string]$msExchRecipientDisplayType
-,
-[parameter(ParameterSetName = 'TypeDetails')]
-[string]$msExchRecipientTypeDetails
-)
-$DisplayTypes = @(
-            [pscustomobject]@{Value=1;Type='Universal Distribution Group';Name='DistributionGroup'}
-            [pscustomobject]@{Value=1073741833;Type='Universal Security Group';Name='SecurityDistributionGroup'}
-            [pscustomobject]@{Value=3;Type='Dynamic Distribution Group';Name='DynamicDistributionGroup'}
-            [pscustomobject]@{Value=1073741824;Type='User Mailbox (User, Shared, or Linked)';Name='UserMailbox'}
-            [pscustomobject]@{Value=7;Type='Room Mailbox';Name='RoomMailbox'}
-            [pscustomobject]@{Value=8;Type='Equipment Mailbox';Name='EquipmentMailbox'}            
-            [pscustomobject]@{Value=6;Type='Mail User, Mail Contact';Name='RemoteMailUser'}
-            [pscustomobject]@{Value=2;Type='Public Folder';Name='PublicFolder'}
-            [pscustomobject]@{Value=4;Type='Outlook Only:Organization';Name='Organization'}
-            [pscustomobject]@{Value=5;Type='Outlook Only:Private Distribution List';Name='PrivateDistributionList'}
-            [pscustomobject]@{Value=-2147483642;Type='Remote User Mailbox';Name='RemoteUserMailbox'}
-            [pscustomobject]@{Value=-2147481594;Type='Remote Equipment Mailbox';Name='RemoteEquipmentMailbox'}
-            [pscustomobject]@{Value=-2147483642;Type='Remote Shared Mailbox';Name='RemoteSharedMailbox'}
-            [pscustomobject]@{Value=-2147481850;Type='Remote Room Mailbox';Name='RemoteRoomMailbox'}
-)
-$RecipientTypeDetailsTypes = @(
-            [pscustomobject]@{Value=1;Type='User Mailbox';Name='UserMailbox'}
-            [pscustomobject]@{Value=2;Type='Linked Mailbox';Name='LinkedMailbox'}
-            [pscustomobject]@{Value=4;Type='Shared Mailbox';Name='SharedMailbox'}
-            [pscustomobject]@{Value=8;Type='Legacy Mailbox';Name='LegacyMailbox'}
-            [pscustomobject]@{Value=16;Type='Room Mailbox';Name='RoomMailbox'}
-            [pscustomobject]@{Value=32;Type='Equipment Mailbox';Name='EquipmentMailbox'}
-            [pscustomobject]@{Value=64;Type='Mail Contact';Name='MailContact'}
-            [pscustomobject]@{Value=128;Type='Mail User';Name='MailUser'}
-            [pscustomobject]@{Value=256;Type='Mail Enabled Universal Distribution Group';Name='MailUniversalDistributionGroup'}
-            [pscustomobject]@{Value=512;Type='Mail Enabled Non-Universal Distribution Group';Name='MailNonUniversalDistributionGroup'}
-            [pscustomobject]@{Value=1024;Type='Mail Enabled Universal Security Group';Name='MailUniversalSecurityGroup'}
-            [pscustomobject]@{Value=2048;Type='Dynamic Distribution Group';Name='DynamicDistributionGroup'}
-            [pscustomobject]@{Value=4096;Type='Public Folder';Name='PublicFolder'}
-            [pscustomobject]@{Value=8192;Type='System Attendant Mailbox';Name='SystemAttendantMailbox'}
-            [pscustomobject]@{Value=16384;Type='System Mailbox';Name='SystemMailbox'}
-            [pscustomobject]@{Value=32768;Type='Cross Forest Mail Contact';Name='MailForestContact'}
-            [pscustomobject]@{Value=65536;Type='User';Name='User'}
-            [pscustomobject]@{Value=131072;Type='Contact';Name='Contact'}
-            [pscustomobject]@{Value=262144;Type='Universal Distribution Group';Name='UniversalDistributionGroup'}
-            [pscustomobject]@{Value=524288;Type='Universal Security Group';Name='UniversalSecurityGroup'}
-            [pscustomobject]@{Value=1048576;Type='Non Universal Group';Name='NonUniversalGroup'}
-            [pscustomobject]@{Value=2097152;Type='Disabled User';Name='DisabledUser'}
-            [pscustomobject]@{Value=4194304;Type='Microsoft Exchange';Name='MicrosoftExchange'}
-            [pscustomobject]@{Value=8388608;Type='Arbitration Mailbox';Name='ArbitrationMailbox'}
-            [pscustomobject]@{Value=16777216;Type='Mailbox Plan';Name='MailboxPlan'}
-            [pscustomobject]@{Value=33554432;Type='Linked User';Name='LinkedUser'}
-            [pscustomobject]@{Value=268435456;Type='Room List';Name='RoomList'}
-            [pscustomobject]@{Value=536870912;Type='Discovery Mailbox';Name='DiscoveryMailbox'}
-            [pscustomobject]@{Value=1073741824;Type='Role Group';Name='RoleGroup'}
-            [pscustomobject]@{Value=2147483648;Type='Remote Mailbox';Name='RemoteMailbox'}
-            [pscustomobject]@{Value=137438953472;Type='Team Mailbox';Name='TeamMailbox'}
-)
-switch ($PSCmdlet.ParameterSetName) 
-{
-    'DisplayType'
+    [cmdletbinding()]
+    param
+    (
+    [parameter(ParameterSetName = 'DisplayType')]
+    [string]$msExchRecipientDisplayType
+    ,
+    [parameter(ParameterSetName = 'TypeDetails')]
+    [string]$msExchRecipientTypeDetails
+    )
+    $DisplayTypes = @(
+                [pscustomobject]@{Value=1;Type='Universal Distribution Group';Name='DistributionGroup'}
+                [pscustomobject]@{Value=1073741833;Type='Universal Security Group';Name='SecurityDistributionGroup'}
+                [pscustomobject]@{Value=3;Type='Dynamic Distribution Group';Name='DynamicDistributionGroup'}
+                [pscustomobject]@{Value=1073741824;Type='User Mailbox (User, Shared, or Linked)';Name='UserMailbox'}
+                [pscustomobject]@{Value=7;Type='Room Mailbox';Name='RoomMailbox'}
+                [pscustomobject]@{Value=8;Type='Equipment Mailbox';Name='EquipmentMailbox'}            
+                [pscustomobject]@{Value=6;Type='Mail User, Mail Contact';Name='RemoteMailUser'}
+                [pscustomobject]@{Value=2;Type='Public Folder';Name='PublicFolder'}
+                [pscustomobject]@{Value=4;Type='Outlook Only:Organization';Name='Organization'}
+                [pscustomobject]@{Value=5;Type='Outlook Only:Private Distribution List';Name='PrivateDistributionList'}
+                [pscustomobject]@{Value=-2147483642;Type='Remote User Mailbox';Name='RemoteUserMailbox'}
+                [pscustomobject]@{Value=-2147481594;Type='Remote Equipment Mailbox';Name='RemoteEquipmentMailbox'}
+                [pscustomobject]@{Value=-2147483642;Type='Remote Shared Mailbox';Name='RemoteSharedMailbox'}
+                [pscustomobject]@{Value=-2147481850;Type='Remote Room Mailbox';Name='RemoteRoomMailbox'}
+    )
+    $RecipientTypeDetailsTypes = @(
+                [pscustomobject]@{Value=1;Type='User Mailbox';Name='UserMailbox'}
+                [pscustomobject]@{Value=2;Type='Linked Mailbox';Name='LinkedMailbox'}
+                [pscustomobject]@{Value=4;Type='Shared Mailbox';Name='SharedMailbox'}
+                [pscustomobject]@{Value=8;Type='Legacy Mailbox';Name='LegacyMailbox'}
+                [pscustomobject]@{Value=16;Type='Room Mailbox';Name='RoomMailbox'}
+                [pscustomobject]@{Value=32;Type='Equipment Mailbox';Name='EquipmentMailbox'}
+                [pscustomobject]@{Value=64;Type='Mail Contact';Name='MailContact'}
+                [pscustomobject]@{Value=128;Type='Mail User';Name='MailUser'}
+                [pscustomobject]@{Value=256;Type='Mail Enabled Universal Distribution Group';Name='MailUniversalDistributionGroup'}
+                [pscustomobject]@{Value=512;Type='Mail Enabled Non-Universal Distribution Group';Name='MailNonUniversalDistributionGroup'}
+                [pscustomobject]@{Value=1024;Type='Mail Enabled Universal Security Group';Name='MailUniversalSecurityGroup'}
+                [pscustomobject]@{Value=2048;Type='Dynamic Distribution Group';Name='DynamicDistributionGroup'}
+                [pscustomobject]@{Value=4096;Type='Public Folder';Name='PublicFolder'}
+                [pscustomobject]@{Value=8192;Type='System Attendant Mailbox';Name='SystemAttendantMailbox'}
+                [pscustomobject]@{Value=16384;Type='System Mailbox';Name='SystemMailbox'}
+                [pscustomobject]@{Value=32768;Type='Cross Forest Mail Contact';Name='MailForestContact'}
+                [pscustomobject]@{Value=65536;Type='User';Name='User'}
+                [pscustomobject]@{Value=131072;Type='Contact';Name='Contact'}
+                [pscustomobject]@{Value=262144;Type='Universal Distribution Group';Name='UniversalDistributionGroup'}
+                [pscustomobject]@{Value=524288;Type='Universal Security Group';Name='UniversalSecurityGroup'}
+                [pscustomobject]@{Value=1048576;Type='Non Universal Group';Name='NonUniversalGroup'}
+                [pscustomobject]@{Value=2097152;Type='Disabled User';Name='DisabledUser'}
+                [pscustomobject]@{Value=4194304;Type='Microsoft Exchange';Name='MicrosoftExchange'}
+                [pscustomobject]@{Value=8388608;Type='Arbitration Mailbox';Name='ArbitrationMailbox'}
+                [pscustomobject]@{Value=16777216;Type='Mailbox Plan';Name='MailboxPlan'}
+                [pscustomobject]@{Value=33554432;Type='Linked User';Name='LinkedUser'}
+                [pscustomobject]@{Value=268435456;Type='Room List';Name='RoomList'}
+                [pscustomobject]@{Value=536870912;Type='Discovery Mailbox';Name='DiscoveryMailbox'}
+                [pscustomobject]@{Value=1073741824;Type='Role Group';Name='RoleGroup'}
+                [pscustomobject]@{Value=2147483648;Type='Remote Mailbox';Name='RemoteMailbox'}
+                [pscustomobject]@{Value=137438953472;Type='Team Mailbox';Name='TeamMailbox'}
+    )
+    switch ($PSCmdlet.ParameterSetName) 
     {
-    $DisplayTypes | Where-Object -FilterScript {$_.Value -eq $msExchRecipientDisplayType}
+        'DisplayType'
+        {
+        $DisplayTypes | Where-Object -FilterScript {$_.Value -eq $msExchRecipientDisplayType}
+        }
+        'TypeDetails'
+        {
+        $RecipientTypeDetailsTypes | Where-object -FilterScript {$_.Value -eq $msExchRecipientTypeDetails}
+        }
     }
-    'TypeDetails'
-    {
-    $RecipientTypeDetailsTypes | Where-object -FilterScript {$_.Value -eq $msExchRecipientTypeDetails}
-    }
-}
 }#function Get-RecipientType
 Function Export-FailureRecord
 {
-[cmdletbinding()]
-param(
-[string]$Identity
-,
-[string]$ExceptionCode
-,
-[string]$FailureGroup
-,
-[string]$ExceptionDetails
-,
-[string]$RelatedObjectIdentifier
-,
-[string]$RelatedObjectIdentifierType
-)#Param
+    [cmdletbinding()]
+    param(
+    [string]$Identity
+    ,
+    [string]$ExceptionCode
+    ,
+    [string]$FailureGroup
+    ,
+    [string]$ExceptionDetails
+    ,
+    [string]$RelatedObjectIdentifier
+    ,
+    [string]$RelatedObjectIdentifierType
+    )#Param
     $Exception=[ordered]@{
         Identity = $Identity
         ExceptionCode = $ExceptionCode
@@ -291,318 +291,318 @@ param(
 }#Function Export-FailureRecord
 function Move-StagedADObjectToOperationalOU
 {
-param(
-[parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
-[string[]]$Identity
-,
-[string]$DestinationOU
-)
-begin {}
-process {
-    foreach ($I in $Identity) {
-        try {
-            $message = "Find AD Object: $I"
-            Write-Log -Message $message -EntryType Attempting
-            $aduser = Get-ADObject -Identity $I -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded
-        }#try
-        catch {
-            Write-Log -Message $message -Verbose -EntryType Failed -ErrorLog
-            Write-Log -Message $_.tostring() -ErrorLog
-        }#catch
-        try {
-            $message = "Move-ADObject -Identity $I -TargetPath $DestinationOU"
-            Write-Log -Message $message -EntryType Attempting
-            $aduser | Move-ADObject -TargetPath $DestinationOU -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded
-        }#try
-        catch {
-            Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-            Write-Log -Message $_.tostring() -ErrorLog
-        }#catch
-    }#foreach
-}
-end{}
+    param(
+    [parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+    [string[]]$Identity
+    ,
+    [string]$DestinationOU
+    )
+    begin {}
+    process {
+        foreach ($I in $Identity) {
+            try {
+                $message = "Find AD Object: $I"
+                Write-Log -Message $message -EntryType Attempting
+                $aduser = Get-ADObject -Identity $I -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+            }#try
+            catch {
+                Write-Log -Message $message -Verbose -EntryType Failed -ErrorLog
+                Write-Log -Message $_.tostring() -ErrorLog
+            }#catch
+            try {
+                $message = "Move-ADObject -Identity $I -TargetPath $DestinationOU"
+                Write-Log -Message $message -EntryType Attempting
+                $aduser | Move-ADObject -TargetPath $DestinationOU -ErrorAction Stop
+                Write-Log -Message $message -EntryType Succeeded
+            }#try
+            catch {
+                Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
+                Write-Log -Message $_.tostring() -ErrorLog
+            }#catch
+        }#foreach
+    }
+    end{}
 }#function Move-StagedADObjectToOperationalOU
 function Update-PostMigrationMailboxUser
 {
-[cmdletbinding()]
-param(
-[parameter(
-    Mandatory=$true,
-    ParameterSetName = 'Individual'
-    )]
-[string[]]$Identity
-,
-[parameter(
-    Mandatory=$true,
-    ParameterSetName = 'InputList'
-    )]
-[array]$InputList
-,
-[parameter(Mandatory=$true)]
-[string[]]$SourceAD
-,
-[parameter(Mandatory=$true)]
-[string]$TargetAD
-,
-[parameter(Mandatory=$true)]
-[string]$TargetExchangeOrg
-,
-[parameter(Mandatory = $true)]
-[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid')]
-[string]$TargetLookupAttribute
-,
-[parameter(Mandatory = $true)]
-[validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid')]
-[string]$SourceLookupAttribute
-,
-[parameter(Mandatory = $true)]
-[validateset('UserMailbox','LinkedMailbox','LegacyMailbox','MailUser','RemoteUserMailbox','RemoteSharedMailbox','RemoteRoomMailbox','RemoteEquipmentMailbox')]
-[string]$TargetRecipientTypeDetails
-,
-[parameter(Mandatory = $true)]
-[string]$TargetDeliveryDomain
-)
-begin {
-    switch ($PSCmdlet.ParameterSetName) {
-        'Individual' {
-            $recordcount = $Identity.Count
-        }#Individual
-        'InputList' {
-            if ($TargetLookupAttribute -in ($InputList | get-member -MemberType Properties | select-object -ExpandProperty Name)) {
-                $Identity = @($InputList | Select-Object -ExpandProperty $TargetLookupAttribute)
-                $RecordCount = $Identity.count
-            }#if
-            else {
-                Write-Log -Message "FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute." -Verbose -ErrorLog
-                throw("FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute.")
-            }#else
-        }#InputList
-    }#switch
-    $Global:Exceptions = @()
-    $Global:ProcessedUsers = @()
-    $msExchRecipientTypeDetails = switch ($TargetRecipientTypeDetails) {'UserMailbox' {1} 'LinkedMailbox' {2} 'LegacyMailbox'{8} 'MailUser' {128} 'RemoteUserMailbox' {2147483648} 'RemoteEquipmentMailbox' {17179869184} 'RemoteSharedMailbox' {34359738368} 'RemoteRoomMailbox' {8589934592}}
-}#begin
-process{
-    $cr = 0
-    foreach ($ID in $Identity) {
-        try {
-            $cr++
-            $writeProgressParams = @{
-            Activity = "Update-PostMailboxMigrationUser: TargetForest $TargetAD"
-            CurrentOperation = "Processing Record $cr of $recordcount : $ID"
-            Status = "Lookup User with $ID by $TargetLookupAttribute in Target AD"
-            PercentComplete = $cr/$RecordCount*100
-            }
-            Write-Progress @writeProgressParams
-           ################################################################################################################################################################
-           #lookup users in source Active Directory Environments
-           ################################################################################################################################################################
-           #Lookup Target AD User
-           ################################################################################################################################################################
+    [cmdletbinding()]
+    param(
+    [parameter(
+        Mandatory=$true,
+        ParameterSetName = 'Individual'
+        )]
+    [string[]]$Identity
+    ,
+    [parameter(
+        Mandatory=$true,
+        ParameterSetName = 'InputList'
+        )]
+    [array]$InputList
+    ,
+    [parameter(Mandatory=$true)]
+    [string[]]$SourceAD
+    ,
+    [parameter(Mandatory=$true)]
+    [string]$TargetAD
+    ,
+    [parameter(Mandatory=$true)]
+    [string]$TargetExchangeOrg
+    ,
+    [parameter(Mandatory = $true)]
+    [validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid')]
+    [string]$TargetLookupAttribute
+    ,
+    [parameter(Mandatory = $true)]
+    [validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid')]
+    [string]$SourceLookupAttribute
+    ,
+    [parameter(Mandatory = $true)]
+    [validateset('UserMailbox','LinkedMailbox','LegacyMailbox','MailUser','RemoteUserMailbox','RemoteSharedMailbox','RemoteRoomMailbox','RemoteEquipmentMailbox')]
+    [string]$TargetRecipientTypeDetails
+    ,
+    [parameter(Mandatory = $true)]
+    [string]$TargetDeliveryDomain
+    )
+    begin {
+        switch ($PSCmdlet.ParameterSetName) {
+            'Individual' {
+                $recordcount = $Identity.Count
+            }#Individual
+            'InputList' {
+                if ($TargetLookupAttribute -in ($InputList | get-member -MemberType Properties | select-object -ExpandProperty Name)) {
+                    $Identity = @($InputList | Select-Object -ExpandProperty $TargetLookupAttribute)
+                    $RecordCount = $Identity.count
+                }#if
+                else {
+                    Write-Log -Message "FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute." -Verbose -ErrorLog
+                    throw("FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute.")
+                }#else
+            }#InputList
+        }#switch
+        $Global:Exceptions = @()
+        $Global:ProcessedUsers = @()
+        $msExchRecipientTypeDetails = switch ($TargetRecipientTypeDetails) {'UserMailbox' {1} 'LinkedMailbox' {2} 'LegacyMailbox'{8} 'MailUser' {128} 'RemoteUserMailbox' {2147483648} 'RemoteEquipmentMailbox' {17179869184} 'RemoteSharedMailbox' {34359738368} 'RemoteRoomMailbox' {8589934592}}
+    }#begin
+    process{
+        $cr = 0
+        foreach ($ID in $Identity) {
             try {
-                Write-Log -Message "Attempting: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
-                $TADU = @(Find-Aduser -Identity $ID -IdentityType $TargetLookupAttribute -ADInstance $TargetAD -ErrorAction Stop)
-                Write-Log -Message "Succeeded: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
-            }#try
-            catch {
-                Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD" -Verbose -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog
-                $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserNotFound'}}
-                Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD not found.")
-            }#catch
-            if ($TADU.count -gt 1) {#check for ambiguous results
-                Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD returned multiple objects/ambiguous results." -Verbose -ErrorLog
-                $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserAmbiguous'}}
-                Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD was ambiguous.")
-            }#if
-            else {
-                $TADU = $TADU[0]
-                $TADUGUID = $TADU.objectguid
-                Write-Log -Message "NOTE: Target AD User in $TargetAD Identified with ObjectGUID: $TADUGUID" -Verbose
-            }
+                $cr++
+                $writeProgressParams = @{
+                Activity = "Update-PostMailboxMigrationUser: TargetForest $TargetAD"
+                CurrentOperation = "Processing Record $cr of $recordcount : $ID"
+                Status = "Lookup User with $ID by $TargetLookupAttribute in Target AD"
+                PercentComplete = $cr/$RecordCount*100
+                }
+                Write-Progress @writeProgressParams
             ################################################################################################################################################################
-            #Lookup Matching Source AD User
+            #lookup users in source Active Directory Environments
             ################################################################################################################################################################
-            $writeProgressParams.status = "Lookup User with $($TADU.$SourceLookupAttribute) by $SourceLookupAttribute in Source AD"
-            Write-Progress @writeProgressParams
-            $SADU = @()
-            foreach ($ad in $SourceAD) {
+            #Lookup Target AD User
+            ################################################################################################################################################################
                 try {
-                    Write-Log -message "Attempting: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
-                    $SADU += Find-Aduser -Identity $($TADU.$SourceLookupAttribute) -IdentityType $SourceLookupAttribute -ADInstance $ad -ErrorAction Stop
-                    Write-Log -message "Succeeded: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
+                    Write-Log -Message "Attempting: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
+                    $TADU = @(Find-Aduser -Identity $ID -IdentityType $TargetLookupAttribute -ADInstance $TargetAD -ErrorAction Stop)
+                    Write-Log -Message "Succeeded: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
                 }#try
                 catch {
-                    Write-Log -message "FAILED: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose -ErrorLog
+                    Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD" -Verbose -ErrorLog
                     Write-Log -Message $_.tostring() -ErrorLog
-                }
-            }#foreach
-            #check for no results or ambiguous results
-            switch ($SADU.count) {
-                1 {
-                    Write-Log -message "Succeeded: Found exactly 1 Matching User for $ID in $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
-                    $SADU = $SADU[0]
-                    $SADUGUID = $SADU.objectguid
-                    Write-Log -Message "NOTE: Source AD User Identified in with ObjectGUID: $SADUGUID" -Verbose
-                }#1
-                0 {
-                    Write-Log -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
-                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
-                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append 
-                    throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
-                }#0
-                Default {
-                    Write-Log -message "FAILED: Found multiple ambiguous matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
-                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserAmbiguous'}}
+                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserNotFound'}}
                     Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                    throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') was ambiguous.")
-                }#Default
-            }#switch $SADU.count
-            ################################################################################################################################################################
-            #Calculate Address Changes
-            ################################################################################################################################################################
-            $writeProgressParams.status = "Calculate Proxy Address and Target Address Changes"
-            Write-Progress @writeProgressParams
-            try {
-                Write-Log -Message "Attempting: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose
-                $TargetDeliveryDomainAddress = ($TADU.proxyaddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]
-                Write-Log -Message "Succeeded: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID : $TargetDeliveryDomainAddress" -Verbose
-            }#try
-            catch {
-                Write-Log -Message "FAILED: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog
-                Write-Log -Message "NOTE: $TargetDeliveryDomain SMTP Proxy Address for Target AD User $TADUGUID will be added." -Verbose -ErrorLog
-                $AddTargetDeliveryProxyAddress = $true
-            }#catch
-            #setup for get-desiredproxyaddresses function to calculate updated addresses
-            $GetDesiredProxyAddressesParams = @{
-                CurrentProxyAddresses=$TADU.proxyAddresses
-                LegacyExchangeDNs=@($SADU.legacyExchangeDN)
-                Recipients = $SADU
-                DesiredOrCurrentAlias = $TADU.mailNickName
-            }
-            if ($AddTargetDeliveryProxyAddress) {$GetDesiredProxyAddressesParams.VerifyAddTargetAddress = $true}
-            $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
-            if ($AddTargetDeliveryProxyAddress) {$TargetDeliveryDomainAddress = ($DesiredProxyAddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]}
-            #preparation activities complete, time to write changes to Target AD
-            Write-Log -message "Using AD Cmdlets to set attributes for $TADUGUID in $TargetAD" -Verbose
-            $writeProgressParams.status = "Updating Attributes for $TADUGUID in $TargetAD using AD Cmdlets"
-            Write-Progress @writeProgressParams
-            #ClearTargetAttributes
-            $setaduserparams1 = @{
-                Identity=$TADUGUID
-                clear='proxyaddresses','targetaddress','msExchRecipientDisplayType','msExchRecipientTypeDetails','msExchUsageLocation'
-                Server=$TADU.CanonicalName.split('/')[0] #get's the Target AD Users Domain to use as the server value with set-aduser
-                ErrorAction = 'Stop'
-            }#setaduserparams1
-            try {
-                Write-Log -message "Attempting: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
-                set-aduser @setaduserparams1
-                Write-Log -message "Succeeded: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
-            }#try
-            catch {
-                Write-Log -message "FAILED: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog
-                $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToClearTargetAttributes'}}
-                Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("Failed to clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
-            }#catch
-            #SetNewValuesOnTargetAttributes
-            $setaduserparams2 = @{
-                identity=$TADUGUID
-                add=@{
-                    targetaddress = "SMTP:$TargetDeliveryDomainAddress"
-                    proxyaddresses = [string[]]$DesiredProxyAddresses
-                    msExchRecipientDisplayType = -2147483642
-                    msExchRecipientTypeDetails = 2147483648
-                    msExchRemoteRecipientType = 4
+                    throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD not found.")
+                }#catch
+                if ($TADU.count -gt 1) {#check for ambiguous results
+                    Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD returned multiple objects/ambiguous results." -Verbose -ErrorLog
+                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserAmbiguous'}}
+                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD was ambiguous.")
+                }#if
+                else {
+                    $TADU = $TADU[0]
+                    $TADUGUID = $TADU.objectguid
+                    Write-Log -Message "NOTE: Target AD User in $TargetAD Identified with ObjectGUID: $TADUGUID" -Verbose
                 }
-                Server=$TADU.CanonicalName.split('/')[0]
-                ErrorAction = 'Stop'
-            }#setaduserparams2
-            if ($TADU.c) {$setaduserparams1.msExchangeUsageLocation = $TADU.c}
-            try {
-                Write-Log -message "Attempting: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
-                set-aduser @setaduserparams2
-                Write-Log -message "Succeeded: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
-            }#try
-            catch {
-                Write-Log -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $ID in $TargetAD" -Verbose -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog
-                $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToSetTargetAttributes'}}
-                Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
-            }#catch
-            #have exchange clean up and set version/legacyexchangedn
-            #wait until Exchange "sees" the new attributes in the Global Catalog
-            $writeProgressParams.status = "Enabling ADUser $TADUGUID in $TargetAD"
-            Write-Progress @writeProgressParams
-            $EnableADAccountParams = @{
-                identity=$TADUGUID
-                Server=$TADU.CanonicalName.split('/')[0]
-                ErrorAction = 'Stop'
-            }#EnableADAccountParams
-            try {
-                Write-Log -message "Attempting: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
-                Enable-ADAccount @EnableADAccountParams
-                Write-Log -message "Succeeded: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
-            }#try
-            catch {
-                Write-Log -message "FAILED: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog
-                $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToEnableAccount'}}
-                Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
-            }#catch
+                ################################################################################################################################################################
+                #Lookup Matching Source AD User
+                ################################################################################################################################################################
+                $writeProgressParams.status = "Lookup User with $($TADU.$SourceLookupAttribute) by $SourceLookupAttribute in Source AD"
+                Write-Progress @writeProgressParams
+                $SADU = @()
+                foreach ($ad in $SourceAD) {
+                    try {
+                        Write-Log -message "Attempting: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
+                        $SADU += Find-Aduser -Identity $($TADU.$SourceLookupAttribute) -IdentityType $SourceLookupAttribute -ADInstance $ad -ErrorAction Stop
+                        Write-Log -message "Succeeded: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
+                    }#try
+                    catch {
+                        Write-Log -message "FAILED: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose -ErrorLog
+                        Write-Log -Message $_.tostring() -ErrorLog
+                    }
+                }#foreach
+                #check for no results or ambiguous results
+                switch ($SADU.count) {
+                    1 {
+                        Write-Log -message "Succeeded: Found exactly 1 Matching User for $ID in $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                        $SADU = $SADU[0]
+                        $SADUGUID = $SADU.objectguid
+                        Write-Log -Message "NOTE: Source AD User Identified in with ObjectGUID: $SADUGUID" -Verbose
+                    }#1
+                    0 {
+                        Write-Log -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                        $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
+                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append 
+                        throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
+                    }#0
+                    Default {
+                        Write-Log -message "FAILED: Found multiple ambiguous matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                        $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserAmbiguous'}}
+                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') was ambiguous.")
+                    }#Default
+                }#switch $SADU.count
+                ################################################################################################################################################################
+                #Calculate Address Changes
+                ################################################################################################################################################################
+                $writeProgressParams.status = "Calculate Proxy Address and Target Address Changes"
+                Write-Progress @writeProgressParams
+                try {
+                    Write-Log -Message "Attempting: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose
+                    $TargetDeliveryDomainAddress = ($TADU.proxyaddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]
+                    Write-Log -Message "Succeeded: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID : $TargetDeliveryDomainAddress" -Verbose
+                }#try
+                catch {
+                    Write-Log -Message "FAILED: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose -ErrorLog
+                    Write-Log -Message $_.tostring() -ErrorLog
+                    Write-Log -Message "NOTE: $TargetDeliveryDomain SMTP Proxy Address for Target AD User $TADUGUID will be added." -Verbose -ErrorLog
+                    $AddTargetDeliveryProxyAddress = $true
+                }#catch
+                #setup for get-desiredproxyaddresses function to calculate updated addresses
+                $GetDesiredProxyAddressesParams = @{
+                    CurrentProxyAddresses=$TADU.proxyAddresses
+                    LegacyExchangeDNs=@($SADU.legacyExchangeDN)
+                    Recipients = $SADU
+                    DesiredOrCurrentAlias = $TADU.mailNickName
+                }
+                if ($AddTargetDeliveryProxyAddress) {$GetDesiredProxyAddressesParams.VerifyAddTargetAddress = $true}
+                $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
+                if ($AddTargetDeliveryProxyAddress) {$TargetDeliveryDomainAddress = ($DesiredProxyAddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]}
+                #preparation activities complete, time to write changes to Target AD
+                Write-Log -message "Using AD Cmdlets to set attributes for $TADUGUID in $TargetAD" -Verbose
+                $writeProgressParams.status = "Updating Attributes for $TADUGUID in $TargetAD using AD Cmdlets"
+                Write-Progress @writeProgressParams
+                #ClearTargetAttributes
+                $setaduserparams1 = @{
+                    Identity=$TADUGUID
+                    clear='proxyaddresses','targetaddress','msExchRecipientDisplayType','msExchRecipientTypeDetails','msExchUsageLocation'
+                    Server=$TADU.CanonicalName.split('/')[0] #get's the Target AD Users Domain to use as the server value with set-aduser
+                    ErrorAction = 'Stop'
+                }#setaduserparams1
+                try {
+                    Write-Log -message "Attempting: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
+                    set-aduser @setaduserparams1
+                    Write-Log -message "Succeeded: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
+                }#try
+                catch {
+                    Write-Log -message "FAILED: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose -ErrorLog
+                    Write-Log -Message $_.tostring() -ErrorLog
+                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToClearTargetAttributes'}}
+                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    throw("Failed to clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
+                }#catch
+                #SetNewValuesOnTargetAttributes
+                $setaduserparams2 = @{
+                    identity=$TADUGUID
+                    add=@{
+                        targetaddress = "SMTP:$TargetDeliveryDomainAddress"
+                        proxyaddresses = [string[]]$DesiredProxyAddresses
+                        msExchRecipientDisplayType = -2147483642
+                        msExchRecipientTypeDetails = 2147483648
+                        msExchRemoteRecipientType = 4
+                    }
+                    Server=$TADU.CanonicalName.split('/')[0]
+                    ErrorAction = 'Stop'
+                }#setaduserparams2
+                if ($TADU.c) {$setaduserparams1.msExchangeUsageLocation = $TADU.c}
+                try {
+                    Write-Log -message "Attempting: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
+                    set-aduser @setaduserparams2
+                    Write-Log -message "Succeeded: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
+                }#try
+                catch {
+                    Write-Log -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $ID in $TargetAD" -Verbose -ErrorLog
+                    Write-Log -Message $_.tostring() -ErrorLog
+                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToSetTargetAttributes'}}
+                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
+                }#catch
+                #have exchange clean up and set version/legacyexchangedn
+                #wait until Exchange "sees" the new attributes in the Global Catalog
+                $writeProgressParams.status = "Enabling ADUser $TADUGUID in $TargetAD"
+                Write-Progress @writeProgressParams
+                $EnableADAccountParams = @{
+                    identity=$TADUGUID
+                    Server=$TADU.CanonicalName.split('/')[0]
+                    ErrorAction = 'Stop'
+                }#EnableADAccountParams
+                try {
+                    Write-Log -message "Attempting: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
+                    Enable-ADAccount @EnableADAccountParams
+                    Write-Log -message "Succeeded: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
+                }#try
+                catch {
+                    Write-Log -message "FAILED: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose -ErrorLog
+                    Write-Log -Message $_.tostring() -ErrorLog
+                    $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToEnableAccount'}}
+                    Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
+                }#catch
 
-            $writeProgressParams.status = "Updating Recipient $TADUGUID in $TargetExchangeOrg"
-            Write-Progress @writeProgressParams
-            do {
-                $count++
-                start-sleep -Seconds 3
-                Connect-Exchange -ExchangeOrganization $TargetExchangeOrg
-                $Recipient = @(Invoke-ExchangeCommand -cmdlet get-recipient -ExchangeOrganization $TargetExchangeOrg -string "-Identity $TADUGUID -ErrorAction SilentlyContinue")
-            }
-            until ($Recipient.count -ge 1 -or $count -ge 15)
-            #now that we found the object as a recipient, go ahead and run Update-Recipient against the object
-            try {
-                Write-Log -message "Attempting: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
-                $Global:ErrorActionPreference = 'Stop'
-                Connect-Exchange -ExchangeOrganization $TargetExchangeOrg
-                Invoke-ExchangeCommand -cmdlet Update-Recipient -ExchangeOrganization $TargetExchangeOrg -string "-Identity $TADUGUID -ErrorAction Stop"
-                $Global:ErrorActionPreference = 'Continue'
-                Write-Log -message "Succeeded: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
-            }
-            catch {
-                $Global:ErrorActionPreference = 'Continue'
-                Write-Log -message "FAILED: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose -ErrorLog
-                Write-Log -message $_.tostring() -ErrorLog
-                $Global:Exceptions += $DesiredUPNAndPrimarySMTPAddress | Select-Object *,@{n='Exception';e={'FailedToUpdateRecipient'}}
-                Export-Data -DataToExportTitle TargetForestExceptionsUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
-                throw("Failed to Update Recipient for $TADUGUID in $TargetExchangeOrg")
-            }
-            $ProcessedUser = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,@{n='UserPrincipalname';e={$DesiredUPNAndPrimarySMTPAddress}},@{n='ObjectGUID';e={$TADUGUID}}
-            $Global:ProcessedUsers += $ProcessedUser
-            Write-Log -Message "NOTE: Processing for $DesiredUPNAndPrimarySMTPAddress with GUID $TADUGUID in $TargetAD and $TargetExchangeOrg has completed successfully." -Verbose
-        Export-Data -DataToExportTitle PostMailboxMigrationProcessedUsers -DataToExport $ProcessedUser -DataType csv -Append
-    }#try
-    catch {
-        $_
+                $writeProgressParams.status = "Updating Recipient $TADUGUID in $TargetExchangeOrg"
+                Write-Progress @writeProgressParams
+                do {
+                    $count++
+                    start-sleep -Seconds 3
+                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrg
+                    $Recipient = @(Invoke-ExchangeCommand -cmdlet get-recipient -ExchangeOrganization $TargetExchangeOrg -string "-Identity $TADUGUID -ErrorAction SilentlyContinue")
+                }
+                until ($Recipient.count -ge 1 -or $count -ge 15)
+                #now that we found the object as a recipient, go ahead and run Update-Recipient against the object
+                try {
+                    Write-Log -message "Attempting: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
+                    $Global:ErrorActionPreference = 'Stop'
+                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrg
+                    Invoke-ExchangeCommand -cmdlet Update-Recipient -ExchangeOrganization $TargetExchangeOrg -string "-Identity $TADUGUID -ErrorAction Stop"
+                    $Global:ErrorActionPreference = 'Continue'
+                    Write-Log -message "Succeeded: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
+                }
+                catch {
+                    $Global:ErrorActionPreference = 'Continue'
+                    Write-Log -message "FAILED: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose -ErrorLog
+                    Write-Log -message $_.tostring() -ErrorLog
+                    $Global:Exceptions += $DesiredUPNAndPrimarySMTPAddress | Select-Object *,@{n='Exception';e={'FailedToUpdateRecipient'}}
+                    Export-Data -DataToExportTitle TargetForestExceptionsUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                    throw("Failed to Update Recipient for $TADUGUID in $TargetExchangeOrg")
+                }
+                $ProcessedUser = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,@{n='UserPrincipalname';e={$DesiredUPNAndPrimarySMTPAddress}},@{n='ObjectGUID';e={$TADUGUID}}
+                $Global:ProcessedUsers += $ProcessedUser
+                Write-Log -Message "NOTE: Processing for $DesiredUPNAndPrimarySMTPAddress with GUID $TADUGUID in $TargetAD and $TargetExchangeOrg has completed successfully." -Verbose
+            Export-Data -DataToExportTitle PostMailboxMigrationProcessedUsers -DataToExport $ProcessedUser -DataType csv -Append
+        }#try
+        catch {
+            $_
+        }
+        }#foreach
+    }#process
+    end{
+    if ($Global:ProcessedUsers.count -ge 1) {
+        Write-Log -Message "Successfully Processed $($Global:ProcessedUsers.count) Users." -Verbose
     }
-    }#foreach
-}#process
-end{
-if ($Global:ProcessedUsers.count -ge 1) {
-    Write-Log -Message "Successfully Processed $($Global:ProcessedUsers.count) Users." -Verbose
-}
-if ($Global:Exceptions.count -ge 1) {
-    Write-Log -Message "Processed $($Global:Exceptions.count) Users with Exceptions." -Verbose
-}
-}#end
+    if ($Global:Exceptions.count -ge 1) {
+        Write-Log -Message "Processed $($Global:Exceptions.count) Users with Exceptions." -Verbose
+    }
+    }#end
 }#function
 function Add-MSOLLicenseToUser
 {
@@ -987,99 +987,59 @@ foreach ($Record in $UsersToLicense) {
 }
 function Add-LicenseToMSOLUser
 {
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[ValidatePattern(".:.")]
-[string]$AccountSKUID
-,
-[parameter()]
-[string[]]$DisabledPlans
-,
-[Parameter(Mandatory,ParameterSetName='UserPrincipalName',ValueFromPipelineByPropertyName)]
-[string[]]$UserPrincipalName
-,
-[Parameter(Mandatory,ParameterSetName='ObjectID',ValueFromPipeline)]
-[guid[]]$ObjectID
-,
-[Parameter(Mandatory)]
-[bool]$CheckForExchangeOnlineRecipient = $true
-,
-[parameter(Mandatory)]
-[string]$UsageLocation
-,
-[parameter()]
-[string]$ExchangeOrganization
-)
-<#
-DynamicParam {
-        $NewDynamicParameterParams=@{
-            Name = 'ExchangeOrganization'
-            ValidateSet = @(Get-OneShellVariableValue -name 'CurrentOrgAdminProfileSystems' | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
-            Alias = @('Org','ExchangeOrg')
-            Position = 2
-            ParameterSetName = 'Organization'
-        }
-        New-DynamicParameter @NewDynamicParameterParams -Mandatory $false
-    }#DynamicParam
-#>
-begin
-{
-    if ($PSBoundParameters['CheckForExchangeOnlineRecipient'] -eq $true -and $PSBoundParameters.ContainsKey('ExchangeOrganization') -eq $false)
-    {throw "ExchangeOrganization parameter required when -CheckForExchangeOnlineRecipient is True"}
-    $newLicenseOptionsParams = @{
-        AccountSkuID = $AccountSKUID
-        ErrorAction = 'Stop'
-    }
-    if ($PSBoundParameters.ContainsKey('DisabledPlans'))
-    {
-        $newLicenseOptionsParams.DisabledPlans = $DisabledPlans
-    }
-    try
-    {
-        $message = "Build License Options Object"
-        Write-Log -Message $message -EntryType Attempting
-        $LicenseOptions = New-MsolLicenseOptions @newLicenseOptionsParams
-        Write-Log -Message $message -EntryType Succeeded
-    }
-    catch
-    {
-        $myerror = $_
-        Write-Log -Message $message -EntryType Failed -Verbose
-        Write-Log -Message $_.tostring() -ErrorLog -Verbose
-        throw("Failed:$message")
-    }
-    $IdentityParameter = $PSCmdlet.ParameterSetName
-}
-process
-{
-    switch ($PSCmdlet.ParameterSetName)
-    {
-        'UserPrincipalName'
-        {
-            $Identities = @($UserPrincipalName)
-            $GetMSOLUserParams = @{
-                UserPrincipalName = ''
+    [cmdletbinding()]
+    param(
+    [parameter(Mandatory)]
+    [ValidatePattern(".:.")]
+    [string]$AccountSKUID
+    ,
+    [parameter()]
+    [string[]]$DisabledPlans
+    ,
+    [Parameter(Mandatory,ParameterSetName='UserPrincipalName',ValueFromPipelineByPropertyName)]
+    [string[]]$UserPrincipalName
+    ,
+    [Parameter(Mandatory,ParameterSetName='ObjectID',ValueFromPipeline)]
+    [guid[]]$ObjectID
+    ,
+    [Parameter(Mandatory)]
+    [bool]$CheckForExchangeOnlineRecipient = $true
+    ,
+    [parameter(Mandatory)]
+    [string]$UsageLocation
+    ,
+    [parameter()]
+    [string]$ExchangeOrganization
+    )
+    <#
+    DynamicParam {
+            $NewDynamicParameterParams=@{
+                Name = 'ExchangeOrganization'
+                ValidateSet = @(Get-OneShellVariableValue -name 'CurrentOrgAdminProfileSystems' | Where-Object SystemType -eq 'ExchangeOrganizations' | Select-Object -ExpandProperty Name)
+                Alias = @('Org','ExchangeOrg')
+                Position = 2
+                ParameterSetName = 'Organization'
             }
-        }
-
-        'ObjectID'
-        {
-            $Identities = @($ObjectID)
-            $GetMSOLUserParams = @{
-                ObjectID = ''
-            }
-        }
-    }
-    $GetMSOLUserParams.ErrorAction = 'Stop'
-    :nextID foreach ($ID in $Identities)
+            New-DynamicParameter @NewDynamicParameterParams -Mandatory $false
+        }#DynamicParam
+    #>
+    begin
     {
+        if ($PSBoundParameters['CheckForExchangeOnlineRecipient'] -eq $true -and $PSBoundParameters.ContainsKey('ExchangeOrganization') -eq $false)
+        {throw "ExchangeOrganization parameter required when -CheckForExchangeOnlineRecipient is True"}
+        $newLicenseOptionsParams = @{
+            AccountSkuID = $AccountSKUID
+            ErrorAction = 'Stop'
+        }
+        if ($PSBoundParameters.ContainsKey('DisabledPlans'))
+        {
+            $newLicenseOptionsParams.DisabledPlans = $DisabledPlans
+        }
         try
         {
-            $GetMSOLUserParams.$IdentityParameter = $ID.ToString()
-            $message = "Get MSOL User Object for $ID"
+            $message = "Build License Options Object"
             Write-Log -Message $message -EntryType Attempting
-            $MSOLUser = Get-MsolUser @GetMSOLUserParams
+            $LicenseOptions = New-MsolLicenseOptions @newLicenseOptionsParams
             Write-Log -Message $message -EntryType Succeeded
         }
         catch
@@ -1087,46 +1047,59 @@ process
             $myerror = $_
             Write-Log -Message $message -EntryType Failed -Verbose
             Write-Log -Message $_.tostring() -ErrorLog -Verbose
-            continue nextID
+            throw("Failed:$message")
         }
-        if ($CheckForExchangeOnlineRecipient -eq $true)
+        $IdentityParameter = $PSCmdlet.ParameterSetName
+    }
+    process
+    {
+        switch ($PSCmdlet.ParameterSetName)
         {
-            $message = "Lookup Exchange Online Recipient for Identity $ID"
-            $getRecipientParams = @{
-                Identity = $MSOLUser.objectID.guid
-                ErrorAction = 'Stop'
+            'UserPrincipalName'
+            {
+                $Identities = @($UserPrincipalName)
+                $GetMSOLUserParams = @{
+                    UserPrincipalName = ''
+                }
             }
+
+            'ObjectID'
+            {
+                $Identities = @($ObjectID)
+                $GetMSOLUserParams = @{
+                    ObjectID = ''
+                }
+            }
+        }
+        $GetMSOLUserParams.ErrorAction = 'Stop'
+        :nextID foreach ($ID in $Identities)
+        {
             try
             {
+                $GetMSOLUserParams.$IdentityParameter = $ID.ToString()
+                $message = "Get MSOL User Object for $ID"
                 Write-Log -Message $message -EntryType Attempting
-                $EOLRecipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $psboundparameters['exchangeOrganization'] -splat $getRecipientParams -ErrorAction Stop
+                $MSOLUser = Get-MsolUser @GetMSOLUserParams
                 Write-Log -Message $message -EntryType Succeeded
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog
+                Write-Log -Message $message -EntryType Failed -Verbose
                 Write-Log -Message $_.tostring() -ErrorLog -Verbose
                 continue nextID
             }
-        }
-        $AssignedLicenseAccountSKUIDs = @($MSOLUser.licenses | Select-Object -ExpandProperty AccountSkuID)
-        if ($AccountSKUID -notin $AssignedLicenseAccountSKUIDs)
-        {
-            if ($MSOLUser.UsageLocation -eq $null)
+            if ($CheckForExchangeOnlineRecipient -eq $true)
             {
-                $message = "UsageLocation for $ID is current NULL"
-                Write-Log -Message $message -EntryType Notification
-                $setMSOLUserParams = @{
-                    ObjectID = $MSOLUser.ObjectID.guid
-                    UsageLocation = $UsageLocation
+                $message = "Lookup Exchange Online Recipient for Identity $ID"
+                $getRecipientParams = @{
+                    Identity = $MSOLUser.objectID.guid
                     ErrorAction = 'Stop'
                 }
-                $message = "Set UsageLocation for $ID to $UsageLocation"
                 try
                 {
                     Write-Log -Message $message -EntryType Attempting
-                    Set-MsolUser @setMSOLUserParams
+                    $EOLRecipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $psboundparameters['exchangeOrganization'] -splat $getRecipientParams -ErrorAction Stop
                     Write-Log -Message $message -EntryType Succeeded
                 }
                 catch
@@ -1136,176 +1109,220 @@ process
                     Write-Log -Message $_.tostring() -ErrorLog -Verbose
                     continue nextID
                 }
-            }#if usage location is null            
-            $message = "Add $AccountSKUID license to MSOL User $ID"
-            $setMSOLUserLicenseParams = @{
-                ObjectID = $MSOLUser.ObjectID.guid
-                LicenseOptions = $LicenseOptions
-                AddLicenses = $AccountSKUID
-                ErrorAction = 'Stop'
             }
-            try
+            $AssignedLicenseAccountSKUIDs = @($MSOLUser.licenses | Select-Object -ExpandProperty AccountSkuID)
+            if ($AccountSKUID -notin $AssignedLicenseAccountSKUIDs)
             {
-                Write-Log -Message $message -EntryType Attempting
-                Set-MsolUserLicense @setMSOLUserLicenseParams
-                Write-Log -Message $message -EntryType Succeeded
-            }
-            catch
-            {
-                $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog
-                Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                if ($MSOLUser.UsageLocation -eq $null)
+                {
+                    $message = "UsageLocation for $ID is current NULL"
+                    Write-Log -Message $message -EntryType Notification
+                    $setMSOLUserParams = @{
+                        ObjectID = $MSOLUser.ObjectID.guid
+                        UsageLocation = $UsageLocation
+                        ErrorAction = 'Stop'
+                    }
+                    $message = "Set UsageLocation for $ID to $UsageLocation"
+                    try
+                    {
+                        Write-Log -Message $message -EntryType Attempting
+                        Set-MsolUser @setMSOLUserParams
+                        Write-Log -Message $message -EntryType Succeeded
+                    }
+                    catch
+                    {
+                        $myerror = $_
+                        Write-Log -Message $message -EntryType Failed -ErrorLog
+                        Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                        continue nextID
+                    }
+                }#if usage location is null            
+                $message = "Add $AccountSKUID license to MSOL User $ID"
+                $setMSOLUserLicenseParams = @{
+                    ObjectID = $MSOLUser.ObjectID.guid
+                    LicenseOptions = $LicenseOptions
+                    AddLicenses = $AccountSKUID
+                    ErrorAction = 'Stop'
+                }
+                try
+                {
+                    Write-Log -Message $message -EntryType Attempting
+                    Set-MsolUserLicense @setMSOLUserLicenseParams
+                    Write-Log -Message $message -EntryType Succeeded
+                }
+                catch
+                {
+                    $myerror = $_
+                    Write-Log -Message $message -EntryType Failed -ErrorLog
+                    Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                }
             }
         }
     }
-}
 }
 function Set-UsageLocationForMSOLUser
 {
-[cmdletbinding()]
-param(
-[parameter(Mandatory)]
-[string]$UsageLocation
-,
-[Parameter(Mandatory,ParameterSetName='UPN')]
-[string]$UserPrincipalName
-,
-[Parameter(Mandatory,ParameterSetName='ObjectID')]
-[string]$ObjectID
-)
+    [cmdletbinding()]
+    param(
+    [parameter(Mandatory)]
+    [string]$UsageLocation
+    ,
+    [Parameter(Mandatory,ParameterSetName='UPN')]
+    [string]$UserPrincipalName
+    ,
+    [Parameter(Mandatory,ParameterSetName='ObjectID')]
+    [string]$ObjectID
+    )
 }
 function Set-ImmutableIDAttributeValue
 {
-[cmdletbinding(
-    DefaultParameterSetName='Single'
-    ,
-    SupportsShouldProcess=$true
-)]
-param(
-[parameter(ParameterSetName = 'EntireForest')]
-[switch]$EntireForest
-,
-[parameter(ParameterSetName = 'SearchBase',Mandatory = $true)]
-[ValidateSet('Base','OneLevel','SubTree')]
-[string]$SearchScope = 'SubTree'
-,
-#Should be a valid Distinguished Name
-[parameter(ParameterSetName = 'SearchBase')]
-[ValidateScript({Test-Path $_})]
-[string]$SearchBase
-,
-[parameter(ParameterSetName = 'Single',ValueFromPipelineByPropertyName = $true)]
-[Alias('DistinguishedName','SamAccountName','ObjectGUID')]
-[string]$Identity
-,
-[string]$ImmutableIDAttribute = 'mS-DS-ConsistencyGuid'
-,
-[string]$ImmutableIDAttributeSource = 'ObjectGUID'
-,
-[bool]$ExportResults = $true
-)
-Begin {
-    #Check Current PSDrive Location: Should be AD, Should be GC, Should be Root of the PSDrive
-    $Location = Get-Location
-    $PSDriveTests = @{
-        ProviderIsActiveDirectory = $($Location.Provider.ToString() -like '*ActiveDirectory*')
-        LocationIsRootOfDrive = ($Location.Path.ToString() -eq $($Location.Drive.ToString() + ':\'))
-        ProviderPathIsRootDSE = ($Location.ProviderPath.ToString() -eq '//RootDSE/')
-    }#PSDriveTests
-    if ($PSDriveTests.Values -contains $false) {
-        Write-Log -ErrorLog -Verbose -Message "Set-ImmutableIDAttributeValue may not continue for the following reason(s) related to the command prompt location:"
-        Write-Log -ErrorLog -Verbose -Message $($PSDriveTests.GetEnumerator() | Where-Object -filter {$_.Value -eq $False} | Select-Object @{n='TestName';e={$_.Key}},Value | ConvertTo-Json -Compress)
-        Write-Error -Message "Set-ImmutableIDAttributeValue may not continue due to the command prompt location.  Review Error Log for details." -ErrorAction Stop
-    }#If
-    #Setup operational parameters for Get-ADObject based on Parameter Set
-    $GetADObjectParams = @{
-        Properties = @('CanonicalName',$ImmutableIDAttributeSource)
-        ErrorAction = 'Stop'
-    }#GetADObjectParams
-    switch ($PSCmdlet.ParameterSetName) {
-        'EntireForest' {
-            $GetADObjectParams.ResultSetSize = $null
-            $GetADObjectParams.Filter = {objectCategory -eq 'Person' -or objectCategory -eq 'Group'}
-        }#EntireForest
-        'Single' {
-            #$GetADObjectParams.ResultSetSize = 1
-        }#Single
-        'SearchBase' {
-            $GetADObjectParams.ResultSetSize = $null
-            $GetADObjectParams.Filter = {objectCategory -eq 'Person' -or objectCategory -eq 'Group'}
-            $GetADObjectParams.SearchBase = $SearchBase
-            $GetADObjectParams.SearchScope = $SearchScope
-        }#SearchBase
-    }#Switch
-    #Setup Export Files if $ExportResults is $true
-    if ($ExportResults) {
-        $ADObjectGetSuccesses = @()
-        $ADObjectGetFailures = @()
-        $Successes = @()
-        $Failures = @()
-        $ExportName = "SetImmutableIDAttributeValueResults"
-    }#if
-}#Begin
-Process {
-    if ($PSCmdlet.ParameterSetName -eq 'Single') {
-        $GetADObjectParams.Identity = $Identity
-    }#if
-    Try {
-        $logstring = $PSCmdlet.MyInvocation.InvocationName + ': Get AD Objects with the Get-ADObject cmdlet.'
-        Write-Log -Message $logstring -Verbose -EntryType Attempting
-        $adobjects = @(Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_}})
-        $ObjectCount = $adobjects.Count
-        $logstring = $PSCmdlet.MyInvocation.InvocationName + ": Get $ObjectCount AD Objects with the Get-ADObject cmdlet."
-        if ($PSCmdlet.ParameterSetName -eq 'Single') {
-            $ADObjectGetSuccesses += $Identity
-        }
-        Write-Log -Message $logstring -Verbose -EntryType Succeeded
+    [cmdletbinding(DefaultParameterSetName='Single',SupportsShouldProcess=$true)]
+    param
+    (
+        [parameter(ParameterSetName = 'EntireForest')]
+        [switch]$EntireForest
+        ,
+        [parameter(ParameterSetName = 'SearchBase',Mandatory = $true)]
+        [ValidateSet('Base','OneLevel','SubTree')]
+        [string]$SearchScope = 'SubTree'
+        ,
+        #Should be a valid Distinguished Name
+        [parameter(ParameterSetName = 'SearchBase')]
+        [ValidateScript({Test-Path $_})]
+        [string]$SearchBase
+        ,
+        [parameter(ParameterSetName = 'Single',ValueFromPipelineByPropertyName = $true)]
+        [Alias('DistinguishedName','SamAccountName','ObjectGUID')]
+        [string]$Identity
+        ,
+        [string]$ImmutableIDAttribute = 'mS-DS-ConsistencyGuid'
+        ,
+        [string]$ImmutableIDAttributeSource = 'ObjectGUID'
+        ,
+        [bool]$ExportResults = $true
+    )
+    Begin
+    {
+        #Check Current PSDrive Location: Should be AD, Should be GC, Should be Root of the PSDrive
+        $Location = Get-Location
+        $PSDriveTests = @{
+            ProviderIsActiveDirectory = $($Location.Provider.ToString() -like '*ActiveDirectory*')
+            LocationIsRootOfDrive = ($Location.Path.ToString() -eq $($Location.Drive.ToString() + ':\'))
+            ProviderPathIsRootDSE = ($Location.ProviderPath.ToString() -eq '//RootDSE/')
+        }#PSDriveTests
+        if ($PSDriveTests.Values -contains $false) {
+            Write-Log -ErrorLog -Verbose -Message "Set-ImmutableIDAttributeValue may not continue for the following reason(s) related to the command prompt location:"
+            Write-Log -ErrorLog -Verbose -Message $($PSDriveTests.GetEnumerator() | Where-Object -filter {$_.Value -eq $False} | Select-Object @{n='TestName';e={$_.Key}},Value | ConvertTo-Json -Compress)
+            Write-Error -Message "Set-ImmutableIDAttributeValue may not continue due to the command prompt location.  Review Error Log for details." -ErrorAction Stop
+        }#If
+        #Setup operational parameters for Get-ADObject based on Parameter Set
+        $GetADObjectParams = @{
+            Properties = @('CanonicalName',$ImmutableIDAttributeSource)
+            ErrorAction = 'Stop'
+        }#GetADObjectParams
+        switch ($PSCmdlet.ParameterSetName)
+        {
+            'EntireForest'
+            {
+                $GetADObjectParams.ResultSetSize = $null
+                $GetADObjectParams.Filter = {objectCategory -eq 'Person' -or objectCategory -eq 'Group'}
+            }#EntireForest
+            'Single'
+            {
+                #$GetADObjectParams.ResultSetSize = 1
+            }#Single
+            'SearchBase'
+            {
+                $GetADObjectParams.ResultSetSize = $null
+                $GetADObjectParams.Filter = {objectCategory -eq 'Person' -or objectCategory -eq 'Group'}
+                $GetADObjectParams.SearchBase = $SearchBase
+                $GetADObjectParams.SearchScope = $SearchScope
+            }#SearchBase
+        }#Switch
+        #Setup Export Files if $ExportResults is $true
+        if ($ExportResults)
+        {
+            $ADObjectGetSuccesses = @()
+            $ADObjectGetFailures = @()
+            $Successes = @()
+            $Failures = @()
+            $ExportName = "SetImmutableIDAttributeValueResults"
+        }#if
+    }#Begin
+    Process
+    {
+        if ($PSCmdlet.ParameterSetName -eq 'Single')
+        {
+            $GetADObjectParams.Identity = $Identity
+        }#if
+        Try
+        {
+            $message = $PSCmdlet.MyInvocation.InvocationName + ': Get AD Objects with the Get-ADObject cmdlet.'
+            Write-Log -Message $message -Verbose -EntryType Attempting
+            $adobjects = @(Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_ -ErrorAction Stop}})
+            $ObjectCount = $adobjects.Count
+            $message = $PSCmdlet.MyInvocation.InvocationName + ": Get $ObjectCount AD Objects with the Get-ADObject cmdlet."
+            if ($PSCmdlet.ParameterSetName -eq 'Single')
+            {
+                $ADObjectGetSuccesses += $Identity
+            }
+            Write-Log -Message $message -Verbose -EntryType Succeeded
         }#Try
-    catch {
-        Write-Log -Message $logstring -Verbose -EntryType Failed
-        Write-Log -Message $_.tostring() -ErrorLog
-        if ($ExportResults -and $PSCmdlet.ParameterSetName -eq 'Single') {
-            $ADObjectGetFailures += $Identity | Select-Object @{n='Identity';e={$Identity}},@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
+        catch
+        {
+            Write-Log -Message $logstring -Verbose -EntryType Failed
+            Write-Log -Message $_.tostring() -ErrorLog
+            if ($ExportResults -and $PSCmdlet.ParameterSetName -eq 'Single')
+            {
+                $ADObjectGetFailures += $Identity | Select-Object @{n='Identity';e={$Identity}},@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
+            }
         }
-    }
-    $O = 0 #Current Object Counter
-    $adobjects | ForEach-Object {
-        $CurrentObject = $_
-        $O++ #Current Object Counter Incremented
-        $LogString = "Set-ImmutableIDAttributeValue: Set Immutable ID Attribute $ImmutableIDAttribute for Object $($CurrentObject.ObjectGUID.tostring()) with the Set-ADObject cmdlet."
-        Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -PercentComplete $($O/$ObjectCount*100) -CurrentOperation $LogString
-        Try {
-            if ($PSCmdlet.ShouldProcess($CurrentObject.ObjectGUID,"Set-ADObject $ImmutableIDAttribute with value $ImmutableIDAttributeSource")) {
-                Write-Log -Message $LogString -EntryType Attempting
-                Set-ADObject -Identity $CurrentObject.ObjectGUID -Add @{$ImmutableIDAttribute=$($CurrentObject.$($ImmutableIDAttributeSource))} -Server $CurrentObject.Domain -ErrorAction Stop -confirm:$false #-WhatIf
-                Write-Log -Message $LogString -EntryType Succeeded
-                if ($ExportResults) {
-                    $Successes += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}}
+        $O = 0 #Current Object Counter
+        $adobjects | ForEach-Object {
+            $CurrentObject = $_
+            $O++ #Current Object Counter Incremented
+            $LogString = "Set-ImmutableIDAttributeValue: Set Immutable ID Attribute $ImmutableIDAttribute for Object $($CurrentObject.ObjectGUID.tostring()) with the Set-ADObject cmdlet."
+            Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -PercentComplete $($O/$ObjectCount*100) -CurrentOperation $LogString
+            Try
+            {
+                if ($PSCmdlet.ShouldProcess($CurrentObject.ObjectGUID,"Set-ADObject $ImmutableIDAttribute with value $ImmutableIDAttributeSource"))
+                {
+                    Write-Log -Message $LogString -EntryType Attempting
+                    Set-ADObject -Identity $CurrentObject.ObjectGUID -Add @{$ImmutableIDAttribute=$($CurrentObject.$($ImmutableIDAttributeSource))} -Server $CurrentObject.Domain -ErrorAction Stop -confirm:$false #-WhatIf
+                    Write-Log -Message $LogString -EntryType Succeeded
+                    if ($ExportResults)
+                    {
+                        $Successes += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}}
+                    }#if
                 }#if
-            }#if
-        }#try
-        Catch {
-            Write-Log -Message $LogString -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $_.ToString() -ErrorLog
-            if ($ExportResults) {
-                $Failures += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
-            }#if
-        }#Catch
-    }#ForEach-Object
-    Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -Completed
-}
-End {
-    If ($ExportResults) {
-        if ($PSCmdlet.ParameterSetName -eq 'Single') {
-            $AllLookupAttempts = $ADObjectGetSuccesses.Count + $ADObjectGetFailures.Count
-            Write-Log -Message "Set-ImmutableIDAttributeValue Get AD Object Results: Total Attempts: $AllLookupAttempts; Successes: $($ADObjectGetSuccesses.Count); Failures: $($ADObjectGetFailures.count)" -Verbose
-        }
-        $AllResults = $Failures + $Successes
-        Write-Log -message "Set-ImmutableIDAttributeValue Set AD Object Results: Total Attempts: $($AllResults.Count); Successes: $($Successes.Count); Failures: $($Failures.Count)." -Verbose
-        Export-Data -DataToExportTitle $ExportName -DataToExport $AllResults -DataType csv
+            }#try
+            Catch
+            {
+                Write-Log -Message $LogString -EntryType Failed -ErrorLog -Verbose
+                Write-Log -Message $_.ToString() -ErrorLog
+                if ($ExportResults)
+                {
+                    $Failures += $CurrentObject | Select-Object *,@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
+                }#if
+            }#Catch
+        }#ForEach-Object
+        Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -Completed
     }
-    Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
-}
+    End
+    {
+        If ($ExportResults)
+        {
+            if ($PSCmdlet.ParameterSetName -eq 'Single')
+            {
+                $AllLookupAttempts = $ADObjectGetSuccesses.Count + $ADObjectGetFailures.Count
+                Write-Log -Message "Set-ImmutableIDAttributeValue Get AD Object Results: Total Attempts: $AllLookupAttempts; Successes: $($ADObjectGetSuccesses.Count); Failures: $($ADObjectGetFailures.count)" -Verbose
+            }
+            $AllResults = $Failures + $Successes
+            Write-Log -message "Set-ImmutableIDAttributeValue Set AD Object Results: Total Attempts: $($AllResults.Count); Successes: $($Successes.Count); Failures: $($Failures.Count)." -Verbose
+            Export-Data -DataToExportTitle $ExportName -DataToExport $AllResults -DataType csv
+        }
+        Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
+    }
 }
 function Set-ExchangeAttributesOnTargetObject
 {
