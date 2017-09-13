@@ -1208,9 +1208,10 @@ function Set-ImmutableIDAttributeValue
         $PSDriveTests = @{
             ProviderIsActiveDirectory = $($Location.Provider.ToString() -like '*ActiveDirectory*')
             LocationIsRootOfDrive = ($Location.Path.ToString() -eq $($Location.Drive.ToString() + ':\'))
-            ProviderPathIsRootDSE = ($Location.ProviderPath.ToString() -eq '//RootDSE/')
+            #ProviderPathIsRootDSE = ($Location.ProviderPath.ToString() -eq '//RootDSE/')
         }#PSDriveTests
-        if ($PSDriveTests.Values -contains $false) {
+        if ($PSDriveTests.Values -contains $false)
+        {
             Write-Log -ErrorLog -Verbose -Message "Set-ImmutableIDAttributeValue may not continue for the following reason(s) related to the command prompt location:"
             Write-Log -ErrorLog -Verbose -Message $($PSDriveTests.GetEnumerator() | Where-Object -filter {$_.Value -eq $False} | Select-Object @{n='TestName';e={$_.Key}},Value | ConvertTo-Json -Compress)
             Write-Error -Message "Set-ImmutableIDAttributeValue may not continue due to the command prompt location.  Review Error Log for details." -ErrorAction Stop
