@@ -1279,36 +1279,38 @@ function Set-ImmutableIDAttributeValue
             }
         }
         $O = 0 #Current Object Counter
-        $adobjects | ForEach-Object {
-            $CurrentObject = $_
-            $O++ #Current Object Counter Incremented
-            $LogString = "Set-ImmutableIDAttributeValue: Set Immutable ID Attribute $ImmutableIDAttribute for Object $($CurrentObject.ObjectGUID.tostring()) with the Set-ADObject cmdlet."
-            Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -PercentComplete $($O/$ObjectCount*100) -CurrentOperation $LogString
-            Try
-            {
-                if ($PSCmdlet.ShouldProcess($CurrentObject.ObjectGUID,"Set-ADObject $ImmutableIDAttribute with value $ImmutableIDAttributeSource"))
+        $AllResults = @(
+            $adobjects | ForEach-Object {
+                $CurrentObject = $_
+                $O++ #Current Object Counter Incremented
+                $LogString = "Set-ImmutableIDAttributeValue: Set Immutable ID Attribute $ImmutableIDAttribute for Object $($CurrentObject.ObjectGUID.tostring()) with the Set-ADObject cmdlet."
+                Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -PercentComplete $($O/$ObjectCount*100) -CurrentOperation $LogString
+                Try
                 {
-                    Write-Log -Message $LogString -EntryType Attempting
-                    Set-ADObject -Identity $CurrentObject.ObjectGUID -Add @{$ImmutableIDAttribute=$($CurrentObject.$($ImmutableIDAttributeSource))} -Server $CurrentObject.Domain -ErrorAction Stop -confirm:$false #-WhatIf
-                    Write-Log -Message $LogString -EntryType Succeeded
+                    if ($PSCmdlet.ShouldProcess($CurrentObject.ObjectGUID,"Set-ADObject $ImmutableIDAttribute with value $ImmutableIDAttributeSource"))
+                    {
+                        Write-Log -Message $LogString -EntryType Attempting
+                        Set-ADObject -Identity $CurrentObject.ObjectGUID -Add @{$ImmutableIDAttribute=$($CurrentObject.$($ImmutableIDAttributeSource))} -Server $CurrentObject.Domain -ErrorAction Stop -confirm:$false #-WhatIf
+                        Write-Log -Message $LogString -EntryType Succeeded
+                        if ($ExportResults)
+                        {
+                            $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})
+                            Write-Output -InputObject ($CurrentObject | Select-Object -Property $attributeset)
+                        }#if
+                    }#if
+                }#try
+                Catch
+                {
+                    Write-Log -Message $LogString -EntryType Failed -ErrorLog -Verbose
+                    Write-Log -Message $_.ToString() -ErrorLog
                     if ($ExportResults)
                     {
-                        $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})
-                        $Successes += $CurrentObject | Select-Object -Property $attributeset
+                        $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})                    
+                        Write-Output -inputObject ($CurrentObject | Select-Object -Property $attributeset)
                     }#if
-                }#if
-            }#try
-            Catch
-            {
-                Write-Log -Message $LogString -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $_.ToString() -ErrorLog
-                if ($ExportResults)
-                {
-                    $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})                    
-                    $Failures += $CurrentObject | Select-Object -Property $attributeset
-                }#if
-            }#Catch
-        }#ForEach-Object
+                }#Catch
+            }#ForEach-Object
+        )
         Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -Completed
     }
     End
