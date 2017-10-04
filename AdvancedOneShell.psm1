@@ -1320,7 +1320,7 @@ function Set-ImmutableIDAttributeValue
                 $AllLookupAttempts = $ADObjectGetSuccesses.Count + $ADObjectGetFailures.Count
                 Write-Log -Message "Set-ImmutableIDAttributeValue Get AD Object Results: Total Attempts: $AllLookupAttempts; Successes: $($ADObjectGetSuccesses.Count); Failures: $($ADObjectGetFailures.count)" -Verbose
             }
-            $AllResults = $Failures + $Successes
+            $AllResults = @($Failures + $Successes)
             Write-Log -message "Set-ImmutableIDAttributeValue Set AD Object Results: Total Attempts: $($AllResults.Count); Successes: $($Successes.Count); Failures: $($Failures.Count)." -Verbose
             Export-Data -DataToExportTitle $ExportName -DataToExport $AllResults -DataType csv
         }
