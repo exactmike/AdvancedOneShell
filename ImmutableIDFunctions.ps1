@@ -107,10 +107,13 @@ function Set-ImmutableIDAttributeValue
                     {
                         $GetADObjectParams.Identity = $Identity
                         $adobjects = @(Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_ -ErrorAction Stop}})
-                        $ObjectCount = $adobjects.Count
-                        $message = $PSCmdlet.MyInvocation.InvocationName + ": Get $ObjectCount AD Objects with the Get-ADObject cmdlet."
+                        $message = $PSCmdlet.MyInvocation.InvocationName + ": Get $($adObjects.Count) AD Objects with the Get-ADObject cmdlet."
                         $ADObjectGetSuccesses += $Identity
                         Write-Log -Message $message -Verbose -EntryType Succeeded
+                        if ($OnlyUpdateNull -eq $true)
+                        {
+                            $adobjects = $adobjects | Where-Object -FilterScript {$null -eq $_.$($ImmutableIDAttribute)}
+                        }                        
                     }#Try
                     catch
                     {
@@ -146,6 +149,7 @@ function Set-ImmutableIDAttributeValue
             {
                 #Modify the objects that need modifying
                 $O = 0 #Current Object Counter
+                $ObjectCount = $adobjects.Count
                 $AllResults = @(
                     $adobjects | ForEach-Object {
                         $CurrentObject = $_
