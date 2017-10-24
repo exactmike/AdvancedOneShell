@@ -1175,8 +1175,8 @@ function Set-UsageLocationForMSOLUser
         )
 
     }
-. .\ImmutableIDFunctions.ps1
-    function Set-ExchangeAttributesOnTargetObject
+. $(Join-Path $PSScriptRoot 'ImmutableIDFunctions.ps1')
+function Set-ExchangeAttributesOnTargetObject
     {
         [cmdletbinding()]
         param
