@@ -201,3 +201,54 @@ function Set-ImmutableIDAttributeValue
             Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
         }
     }
+function Join-ADObjectByImmutableID
+    {
+        [cmdletbinding()]
+        param
+        (
+            $SourceForestDrive #Source ADForest PSDriveName Without any path/punctuation
+            ,
+            $SourceObjectGUID
+            ,
+            $SourceImmutableIDAttribute = 'mS-DS-ConsistencyGUID'
+            ,
+            $TargetForestDrive #Target ADForest PSDriveName Without any path/punctuation
+            ,
+            $TargetObjectGUID
+            ,
+            $TargetImmutableIDAttribute
+        )
+        Push-Location
+        try
+        {
+            Set-Location $($SourceForestDrive + ':\') -ErrorAction Stop
+            $SourceObjectFromGlobalCatalog = Get-AdObject -Identity $SourceObjectGUID -Property CanonicalName -ErrorAction Stop
+            $SourceObjectDomain = Get-AdObjectDomain -adobject $SourceObjectFromGlobalCatalog -ErrorAction Stop
+            $SourceObject = Get-AdObject -Identity $SourceObjectGUID -Server $SourceObjectDomain -Property CanonicalName,$SourceImmutableIDAttribute -ErrorAction Stop
+            if ($null -eq $($SourceObject.$($SourceImmutableIDAttribute)))
+            {
+                Throw "Source Object $SourceObjectGUID's source Immutable ID attribute $SourceImmutableIDAttribute is NULL"
+            }
+        }
+        catch
+        {
+            $_
+            Throw "Source Object $sourceObjectGUID Failure for Source Forest PSDrive $sourceForestDrive"
+        }
+        try
+        {
+            Set-Location $($TargetForestDrive + ':\') -ErrorAction Stop
+            $TargetObjectFromGlobalCatalog = Get-AdObject -Identity $TargetObjectGUID -Property CanonicalName -ErrorAction Stop
+            $TargetObjectDomain = Get-AdObjectDomain -adobject $TargetObjectFromGlobalCatalog -ErrorAction Stop
+            $TargetObject = Get-AdObject -Identity $SourceObjectGUID -Server $SourceObjectDomain -Property CanonicalName,$SourceImmutableIDAttribute -ErrorAction Stop
+            if ($null -ne $($TargetObject.$($TargetImmutableIDAttribute)))
+            {
+                Throw "Target Object $TargetObjectGUID's target Immutable ID attribute $targetImmutableIDAttribute is NOT currently NULL"
+            }
+            Set-ADObject -Identity $TargetObjectGUID -Add @{$TargetImmutableIDAttribute=$($SourceObject.$($SourceImmutableIDAttribute))} -Server $TargetObjectDomain -ErrorAction Stop -confirm:$false -WhatIf
+        }
+        catch
+        {
+            Throw "Target Object $TargetObjectGUID Failure for Target Forest PSDrive $TargetForestDrive"
+        }
+    }
