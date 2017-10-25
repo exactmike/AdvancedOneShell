@@ -232,6 +232,7 @@ function Join-ADObjectByImmutableID
         }
         catch
         {
+            Pop-Location
             $_
             Throw "Source Object $sourceObjectGUID Failure for Source Forest PSDrive $sourceForestDrive"
         }
@@ -249,6 +250,8 @@ function Join-ADObjectByImmutableID
         }
         catch
         {
+            Pop-Location
             Throw "Target Object $TargetObjectGUID Failure for Target Forest PSDrive $TargetForestDrive"
         }
+        Pop-Location
     }
