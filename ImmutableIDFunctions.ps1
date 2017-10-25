@@ -216,7 +216,7 @@ function Join-ADObjectByImmutableID
             ,
             $TargetObjectGUID
             ,
-            $TargetImmutableIDAttribute
+            $TargetImmutableIDAttribute = 'mS-DS-ConsistencyGUID'
         )
         Push-Location
         try
@@ -241,7 +241,7 @@ function Join-ADObjectByImmutableID
             Set-Location $($TargetForestDrive + ':\') -ErrorAction Stop
             $TargetObjectFromGlobalCatalog = Get-AdObject -Identity $TargetObjectGUID -Property CanonicalName -ErrorAction Stop
             $TargetObjectDomain = Get-AdObjectDomain -adobject $TargetObjectFromGlobalCatalog -ErrorAction Stop
-            $TargetObject = Get-AdObject -Identity $SourceObjectGUID -Server $SourceObjectDomain -Property CanonicalName,$SourceImmutableIDAttribute -ErrorAction Stop
+            $TargetObject = Get-AdObject -Identity $TargetObjectGUID -Server $TargetObjectDomain -Property CanonicalName,$TargetImmutableIDAttribute -ErrorAction Stop
             if ($null -ne $($TargetObject.$($TargetImmutableIDAttribute)))
             {
                 Throw "Target Object $TargetObjectGUID's target Immutable ID attribute $targetImmutableIDAttribute is NOT currently NULL"
@@ -251,6 +251,7 @@ function Join-ADObjectByImmutableID
         catch
         {
             Pop-Location
+            $_
             Throw "Target Object $TargetObjectGUID Failure for Target Forest PSDrive $TargetForestDrive"
         }
         Pop-Location
