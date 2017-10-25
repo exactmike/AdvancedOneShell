@@ -203,7 +203,7 @@ function Set-ImmutableIDAttributeValue
     }
 function Join-ADObjectByImmutableID
     {
-        [cmdletbinding()]
+        [cmdletbinding(SupportsShouldProcess)]
         param
         (
             $SourceForestDrive #Source ADForest PSDriveName Without any path/punctuation
@@ -246,7 +246,10 @@ function Join-ADObjectByImmutableID
             {
                 Throw "Target Object $TargetObjectGUID's target Immutable ID attribute $targetImmutableIDAttribute is NOT currently NULL"
             }
-            Set-ADObject -Identity $TargetObjectGUID -Add @{$TargetImmutableIDAttribute=$($SourceObject.$($SourceImmutableIDAttribute))} -Server $TargetObjectDomain -ErrorAction Stop -confirm:$false -WhatIf
+            if ($PSCmdlet.ShouldProcess($TargetObjectGUID,"Set-ADObject $TargetImmutableIDAttribute with value $($SourceObject.$($SourceImmutableIDAttribute))"))
+            {
+                Set-ADObject -Identity $TargetObjectGUID -Add @{$TargetImmutableIDAttribute=$($SourceObject.$($SourceImmutableIDAttribute))} -Server $TargetObjectDomain -ErrorAction Stop -confirm:$false -WhatIf
+            }
         }
         catch
         {
