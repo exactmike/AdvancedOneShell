@@ -203,7 +203,7 @@ function Set-ImmutableIDAttributeValue
     }
 function Join-ADObjectByImmutableID
     {
-        [cmdletbinding()]
+        [cmdletbinding(SupportsShouldProcess)]
         param
         (
             $SourceForestDrive #Source ADForest PSDriveName Without any path/punctuation
