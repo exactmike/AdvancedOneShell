@@ -98,7 +98,7 @@ function Set-ImmutableIDAttributeValue
         Process
         {
             $message = $PSCmdlet.MyInvocation.InvocationName + ': Get AD Objects with the Get-ADObject cmdlet.'
-            Write-Log -Message $message -Verbose -EntryType Attempting            
+            Write-Log -Message $message -Verbose -EntryType Attempting
             switch ($PSCmdlet.ParameterSetName)
             {
                 'single'
