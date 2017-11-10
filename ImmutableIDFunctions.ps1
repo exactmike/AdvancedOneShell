@@ -34,6 +34,7 @@ function Set-ImmutableIDAttributeValue
         )#end param
         Begin
         {
+            Write-Log -Message "Command Line: $($MyInvocation.line)" -EntryType Notification
             #Check Current PSDrive Location: Should be AD, Should be GC, Should be Root of the PSDrive
             $Location = Get-Location
             $PSDriveTests = @{
@@ -144,7 +145,6 @@ function Set-ImmutableIDAttributeValue
             if ($OnlyReport -eq $true)
             {
                 Write-Log -Message "Found $($adobjects.count) AD Objects that do not have a value in ImmutableIDAttribute $immutableIDAttribute" -EntryType Notification
-                Write-Log -Message "Command Line: $($MyInvocation.line)" -EntryType Notification
                 Export-Data -DataToExportTitle TargetADObjectsForSetImmutableID -DataToExport $adobjects -DataType csv
             }#end if
             else #Actually process (if -whatif was not used)
