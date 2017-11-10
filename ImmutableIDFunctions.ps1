@@ -189,18 +189,21 @@ function Set-ImmutableIDAttributeValue
         }
         End
         {
-            If ($ExportResults)
+            if (-not $OnlyReport)
             {
-                if ($PSCmdlet.ParameterSetName -eq 'Single')
+                If ($ExportResults)
                 {
-                    $AllLookupAttempts = $ADObjectGetSuccesses.Count + $ADObjectGetFailures.Count
-                    Write-Log -Message "Set-ImmutableIDAttributeValue Get AD Object Results: Total Attempts: $AllLookupAttempts; Successes: $($ADObjectGetSuccesses.Count); Failures: $($ADObjectGetFailures.count)" -Verbose
-                    Export-Data -DataToExportTitle 'ImmutableIDSingleUpdateGetFailures' -DataToExport $ADObjectGetFailures -DataType csv 
+                    if ($PSCmdlet.ParameterSetName -eq 'Single')
+                    {
+                        $AllLookupAttempts = $ADObjectGetSuccesses.Count + $ADObjectGetFailures.Count
+                        Write-Log -Message "Set-ImmutableIDAttributeValue Get AD Object Results: Total Attempts: $AllLookupAttempts; Successes: $($ADObjectGetSuccesses.Count); Failures: $($ADObjectGetFailures.count)" -Verbose
+                        Export-Data -DataToExportTitle 'ImmutableIDSingleUpdateGetFailures' -DataToExport $ADObjectGetFailures -DataType csv 
+                    }
+                    Write-Log -message "Set-ImmutableIDAttributeValue Set AD Object Results: Total Attempts: $($AllResults.Count); Successes: $($Successes.Count); Failures: $($Failures.Count)." -Verbose
+                    Export-Data -DataToExportTitle $ExportName -DataToExport $AllResults -DataType csv
                 }
-                Write-Log -message "Set-ImmutableIDAttributeValue Set AD Object Results: Total Attempts: $($AllResults.Count); Successes: $($Successes.Count); Failures: $($Failures.Count)." -Verbose
-                Export-Data -DataToExportTitle $ExportName -DataToExport $AllResults -DataType csv
+                Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
             }
-            Write-Log -Message "Set-ImmutableIDAttributeValue Operations Completed." -Verbose
         }
     }
 function Join-ADObjectByImmutableID
