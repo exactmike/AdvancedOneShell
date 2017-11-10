@@ -31,7 +31,7 @@ function Set-ImmutableIDAttributeValue
             [bool]$ExportResults = $true
             ,
             [switch]$OnlyUpdateNull
-        )
+        )#end param
         Begin
         {
             #Check Current PSDrive Location: Should be AD, Should be GC, Should be Root of the PSDrive
@@ -40,18 +40,18 @@ function Set-ImmutableIDAttributeValue
                 ProviderIsActiveDirectory = $($Location.Provider.ToString() -like '*ActiveDirectory*')
                 LocationIsRootOfDrive = ($Location.Path.ToString() -eq $($Location.Drive.ToString() + ':\'))
                 ProviderPathIsRootDSE = ($Location.ProviderPath.ToString() -eq '//RootDSE/')
-            }#PSDriveTests
+            }# End PSDriveTests
             if ($PSDriveTests.Values -contains $false)
             {
                 Write-Log -ErrorLog -Verbose -Message "Set-ImmutableIDAttributeValue may not continue for the following reason(s) related to the command prompt location:"
                 Write-Log -ErrorLog -Verbose -Message $($PSDriveTests.GetEnumerator() | Where-Object -filter {$_.Value -eq $False} | Select-Object @{n='TestName';e={$_.Key}},Value | ConvertTo-Json -Compress)
                 Write-Error -Message "Set-ImmutableIDAttributeValue may not continue due to the command prompt location.  Review Error Log for details." -ErrorAction Stop
-            }#If
+            }# End If
             #Setup operational parameters for Get-ADObject based on Parameter Set
             $GetADObjectParams = @{
                 Properties = @('CanonicalName',$ImmutableIDAttributeSource,$ImmutableIDAttribute)
                 ErrorAction = 'Stop'
-            }#GetADObjectParams
+            }# End GetADObjectParams
             switch ($PSCmdlet.ParameterSetName)
             {
                 'EntireForest'
@@ -72,19 +72,19 @@ function Set-ImmutableIDAttributeValue
                         Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
                         throw "Failed to get AD Forest $ForestFQDN"
                     }                    
-                }#EntireForest
+                }# End EntireForest
                 'Single'
                 {
                     #$GetADObjectParams.ResultSetSize = 1
-                }#Single
+                }# End Single
                 'SearchBase'
                 {
                     $GetADObjectParams.ResultSetSize = $null
                     $GetADObjectParams.Filter = {objectCategory -eq 'Person' -or objectCategory -eq 'Group'}
                     $GetADObjectParams.SearchBase = $SearchBase
                     $GetADObjectParams.SearchScope = $SearchScope
-                }#SearchBase
-            }#Switch
+                }# End SearchBase
+            }# End Switch
             #Setup Export Files if $ExportResults is $true
             if ($ExportResults)
             {
@@ -93,8 +93,8 @@ function Set-ImmutableIDAttributeValue
                 $Successes = @()
                 $Failures = @()
                 $ExportName = "SetImmutableIDAttributeValueResults"
-            }#if
-        }#Begin
+            }# End if
+        }# End Begin
         Process
         {
             $message = $PSCmdlet.MyInvocation.InvocationName + ': Get AD Objects with the Get-ADObject cmdlet.'
@@ -109,43 +109,45 @@ function Set-ImmutableIDAttributeValue
                         $adobjects = @(Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_ -ErrorAction Stop}})
                         $message = $PSCmdlet.MyInvocation.InvocationName + ": Get $($adObjects.Count) AD Objects with the Get-ADObject cmdlet."
                         $ADObjectGetSuccesses += $Identity
-                        Write-Log -Message $message -Verbose -EntryType Succeeded
-                        if ($OnlyUpdateNull -eq $true)
-                        {
-                            $adobjects = $adobjects | Where-Object -FilterScript {$null -eq $_.$($ImmutableIDAttribute)}
-                        }                        
-                    }#Try
+                        Write-Log -Message $message -Verbose -EntryType Succeeded                   
+                    }# End Try
                     catch
                     {
                         Write-Log -Message $message -Verbose -EntryType Failed
                         Write-Log -Message $_.tostring() -ErrorLog
                         $ADObjectGetFailures += $Identity | Select-Object @{n='Identity';e={$Identity}},@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={$_.tostring()}}
-                    }
-                }
+                    }# End Catch
+                }# End Single
                 'SearchBase'
                 {
-                    $adobjects = @()
-                }
+                    $adobjects = @(
+                        Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_ -ErrorAction Stop}}
+                    )
+                }# End SearchBase
                 'EntireForest'
                 {
                     $ADObjects = @(
                         foreach ($d in $Forest.domains)
                         {
+                            Write-Log -Message "Get Objects from domain $d" -EntryType Notification
                             $GetADObjectParams.Server = $d
                             Get-ADObject @GetADObjectParams | Select-Object -ExcludeProperty Item,Property* -Property *,@{n='Domain';e={Get-AdObjectDomain -adobject $_ -ErrorAction Stop}}
                         }
                     )
-                    if ($OnlyUpdateNull -eq $true)
-                    {
-                        $adobjects = $adobjects | Where-Object -FilterScript {$null -eq $_.$($ImmutableIDAttribute)}
-                    }
-                }
+                }# End EntireForest
             }#end switch
+            if ($OnlyUpdateNull -eq $true)
+            {
+                Write-Log -Message "Found $($adobjects.count) AD Objects to test for NULL ImmutableIDAttribute $immutableIDAttribute" -EntryType Notification
+                $adobjects = @($adobjects | Where-Object -FilterScript {$null -eq $_.$($ImmutableIDAttribute)})
+            }#end If
             if ($OnlyReport -eq $true)
             {
+                Write-Log -Message "Found $($adobjects.count) AD Objects that do not have a value in ImmutableIDAttribute $immutableIDAttribute" -EntryType Notification
+                Write-Log -Message "Command Line: $($MyInvocation.line)" -EntryType Notification
                 Export-Data -DataToExportTitle TargetADObjectsForSetImmutableID -DataToExport $adobjects -DataType csv
-            }
-            else
+            }#end if
+            else #Actually process (if -whatif was not used)
             {
                 #Modify the objects that need modifying
                 $O = 0 #Current Object Counter
@@ -167,21 +169,21 @@ function Set-ImmutableIDAttributeValue
                                 {
                                     $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})
                                     Write-Output -InputObject ($CurrentObject | Select-Object -Property $attributeset)
-                                }#if
-                            }#if
-                        }#try
+                                }# End if
+                            }# End if
+                        }# End try
                         Catch
                         {
                             Write-Log -Message $LogString -EntryType Failed -ErrorLog -Verbose
                             Write-Log -Message $_.ToString() -ErrorLog
                             if ($ExportResults)
                             {
-                                $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Succeeded'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})                    
+                                $attributeset = @('ObjectGUID','Domain','ObjectClass','DistinguishedName',@{n='TimeStamp';e={Get-TimeStamp}},@{n='Status';e={'Failed'}},@{n='ErrorString';e={'None'}},@{n='SourceAttribute';e={$ImmutableIDAttributeSource}},@{n='TargetAttribute';e={$ImmutableIDAttribute}})                    
                                 Write-Output -inputObject ($CurrentObject | Select-Object -Property $attributeset)
-                            }#if
-                        }#Catch
-                    }#ForEach-Object
-                )
+                            }# End if
+                        }# End Catch
+                    }# End ForEach-Object
+                )# end AllResults
                 Write-Progress -Activity "Setting Immutable ID Attribute for $ObjectCount AD Object(s)" -Completed
             }#end else
         }
