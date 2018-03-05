@@ -55,6 +55,7 @@ function Get-ExistingProxyAddressTypes
         )
         $ProxyAddresses | ForEach-Object -Process {$_.split(':')[0]} | Sort-Object | Select-Object -Unique
     }
+#end function Get-ExistingProxyAddressTypes
 function Get-DesiredProxyAddresses
     {
         [cmdletbinding()]
@@ -254,7 +255,8 @@ function Get-RecipientType
             $RecipientTypeDetailsTypes | Where-object -FilterScript {$_.Value -eq $msExchRecipientTypeDetails}
             }
         }
-    }#function Get-RecipientType
+    }
+#end function Get-RecipientType
 Function Export-FailureRecord
     {
         [cmdletbinding()]
@@ -4221,5 +4223,3 @@ function Export-ADSyncConnectorChanges
     Write-Verbose -Message "output file: $OutputFileFullPath" -Verbose
 }
 ###################################################################
-#Import other .ps1 files in Module folder
-. $(Join-Path $PSScriptRoot 'ImmutableIDFunctions.ps1')
