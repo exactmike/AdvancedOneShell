@@ -3317,61 +3317,7 @@ function New-SourceTargetRecipientMap
         $RecipientMap
     }
 #end function New-SourceTargetRecipientMap
-function Get-DesiredTargetAlias
-    {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-            [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-            $SourceAlias
-            ,
-            [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-            [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-            $TargetExchangeOrganization
-            ,
-            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-            [string]$ReplacementPrefix
-            ,
-            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-            [string]$SourcePrefix
-            ,
-            [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-            [string]$NewPrefix
-        )
-        $Alias = $SourceAlias
-        $Alias = $Alias -replace '\s|[^1-9a-zA-Z_-]',''
-        switch ($PSCmdlet.ParameterSetName)
-        {
-            'ReplacePrefix'
-            {
-                $NewAlias = $Alias -replace "\b$($sourcePrefix)_",''
-                $NewAlias = $NewAlias -replace "\b$($SourcePrefix)", ''
-                $NewAlias = $NewAlias -replace "$($SourcePrefix)\b", ''
-                $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
-                $Alias = $NewAlias
-            }
-            'NewPrefix'
-            {
-                $Alias = $NewPrefix + '_' + $Alias
-            }
-            'Standard'
-            {
-                $Alias = $SourceAlias
-            }
-        }
-        if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization) 
-        {
-            $Alias
-        }
-        else 
-        {
-            throw "Desired Alias $Alias, derived from Source Alias $SourceAlias is not available."
-        }
-    }
-#end function Get-DesiredTargetAlias
+
 function Get-TargetRecipientFromMap
     {
         [cmdletbinding()]
@@ -3413,74 +3359,6 @@ function New-SourceRecipientDNHash
         $SourceRecipientsDNHash
     }
 #end function New-SourceRecipientDNHash
-function Get-DesiredTargetPrimarySMTPAddress
-    {
-        [cmdletbinding()]
-        param
-        (
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-        $DesiredAlias
-        ,
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-        $TargetExchangeOrganization
-        ,
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-        [string]$TargetSMTPDomain
-        )
-        $DesiredPrimarySMTPAddress = $DesiredAlias + '@' + $TargetSMTPDomain
-
-        if (Test-ExchangeProxyAddress -ProxyAddress $DesiredPrimarySMTPAddress -ExchangeOrganization $TargetExchangeOrganization -ProxyAddressType SMTP)
-        {
-            $DesiredPrimarySMTPAddress
-        }
-        else 
-        {
-            throw "Desired Primary SMTP Address $DesiredPrimarySMTPAddress is not available."
-        }
-    }
-#end function Get-DesiredTargetPrimarySMTPAddress
-function Get-DesiredTargetName
-    {
-        [cmdletbinding()]
-        param
-        (
-        [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-        [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-        $SourceName
-        ,
-        [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-        [string]$ReplacementPrefix
-        ,
-        [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-        [string]$SourcePrefix
-        ,
-        [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-        [string]$NewPrefix
-        )
-        $Name = $SourceName
-        $Name = $Name -replace '|[^1-9a-zA-Z_-]',''
-        switch ($PSCmdlet.ParameterSetName)
-        {
-            'ReplacePrefix'
-            {
-                $NewName = $Name -replace "\b$($sourcePrefix)_",''
-                $NewName = $NewName -replace "\b$($SourcePrefix)", ''
-                $NewName = $NewName -replace "$($SourcePrefix)\b", ''
-                $NewName = "$($ReplacementPrefix)_$($NewName)"
-                $Name = $NewName.Trim()
-            }
-            'NewPrefix'
-            {
-                $Name = $NewPrefix + '_' + $Name
-            }
-            'Standard'
-            {
-            }
-        }
-        Write-Output -InputObject $Name
-    }
-#end function Get-DesiredTargetName
 function New-NestingOrderedGroupArray
     {
         [cmdletbinding()]
@@ -4219,3 +4097,4 @@ Function New-MailFlowContactFromMailbox
     }
 #end function New-MailFlowContactFromMailbox
 ###################################################################
+. $(Join-Path $PSScriptRoot 'ProvisioningFunctions.ps1')
