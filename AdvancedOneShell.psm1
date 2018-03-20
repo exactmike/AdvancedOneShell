@@ -64,7 +64,8 @@ function Get-ExistingProxyAddressTypes
 function Get-DesiredProxyAddresses
     {
         [cmdletbinding()]
-        param(
+        param
+        (
             [parameter(Mandatory=$true)]
             [string[]]$CurrentProxyAddresses
             ,
@@ -122,7 +123,7 @@ function Get-DesiredProxyAddresses
                 }
             }
         }
-        if ($VerifyAddTargetAddress)
+        if ($VerifyAddTargetAddress -eq $true)
         {
             if ($DesiredOrCurrentAlias -and $TargetDeliveryDomain)
             {
@@ -134,8 +135,7 @@ function Get-DesiredProxyAddresses
             }#if
             else
             {
-                Write-Log -Message 'ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.'
-                throw('ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias or TargetDeliveryDomain were not specified.')
+                throw('ERROR: VerifyAddTargetAddress was specified but DesiredOrCurrentAlias and/or TargetDeliveryDomain were not specified.')
             }#else
         }#if
         if ($Recipients.Count -ge 1)
@@ -148,18 +148,21 @@ function Get-DesiredProxyAddresses
                 {
                 $existingProxyAddressTypes = Get-ExistingProxyAddressTypes -proxyAddresses $DesiredProxyAddresses
                     $rpa = @($recipient.$paProperty)
-                    foreach ($a in $rpa) {
+                    foreach ($a in $rpa)
+                    {
                         $type = $a.split(':')[0]
                         $address = $a.split(':')[1]
-                        if ($existingProxyAddressTypes -ccontains $type) {
+                        if ($existingProxyAddressTypes -ccontains $type)
+                        {
                             $la = $type.tolower() + ':' +  $address
-                        }
-                        else {
+                        } #end if
+                        else
+                        {
                             $la = $a
-                        }
+                        } #end else
                         $RecipientProxyAddresses += $la
-                    }#foreach
-                }#if
+                    }#end foreach
+                }#end if
             }#foreach
             if ($RecipientProxyAddresses.count -ge 1)
             {
@@ -172,7 +175,7 @@ function Get-DesiredProxyAddresses
             foreach ($newadd in $AddressesToAdd)
             {$DesiredProxyAddresses += $newadd}
         }
-        if ($VerifySMTPAddressValidity)
+        if ($VerifySMTPAddressValidity -eq $true)
         {
             $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
             foreach ($spa in $SMTPProxyAddresses)
