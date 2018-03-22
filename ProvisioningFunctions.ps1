@@ -42,11 +42,7 @@ function Get-DesiredTargetAlias
             {
                 if ($PrefixOnlyIfNecessary -eq $true)
                 {
-                    if (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession)
-                    {
-                        $Alias
-                    }
-                    else
+                    if (-not (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession))
                     {
                         $Alias = $NewPrefix + '_' + $Alias
                     }
