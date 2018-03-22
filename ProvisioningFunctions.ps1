@@ -202,6 +202,7 @@ function New-ResourceMailboxIntermediateObject
                 }
                 $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
                 Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-Log -Message "New Alias for $FriendlyIdentity is $DesiredAlias" -EntryType Notification -Verbose
             }
             catch
             {
