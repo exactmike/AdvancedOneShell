@@ -11,7 +11,7 @@ function Get-DesiredTargetAlias
             [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
             [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
             [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
-            $TargetExchangeOrganization
+            [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
             ,
             [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
             [string]$ReplacementPrefix
