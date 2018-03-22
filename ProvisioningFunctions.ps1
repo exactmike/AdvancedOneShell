@@ -42,7 +42,7 @@ function Get-DesiredTargetAlias
             {
                 if ($PrefixOnlyIfNecessary -eq $true)
                 {
-                    if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization)
+                    if (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession)
                     {
                         $Alias
                     }
@@ -61,7 +61,7 @@ function Get-DesiredTargetAlias
                 $Alias = $SourceAlias
             }
         }
-        if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization)
+        if (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession)
         {
             $Alias
         }
