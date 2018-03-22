@@ -254,14 +254,14 @@ function New-ResourceMailboxIntermediateObject
                 Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
-            $message = "Check All Desired Proxy Addresses for $FriendlyIdentity for conflicts in target Exchange Organization $TargetExchangeOrganization"
+            $message = "Check All Desired Proxy Addresses for $FriendlyIdentity for conflicts in target Exchange Organization"
             try
             {
                 Write-Log -Message $message -EntryType Attempting
                 $AnyConflicts = @(
                 foreach ($a in $DesiredAddresses)
                 {
-                    $result = Test-ExchangeProxyAddress -ProxyAddress $a -ReturnConflicts -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
+                    $result = Test-ExchangeProxyAddress -ProxyAddress $a -ReturnConflicts -ExchangeSession $TargetExchangeOrganizationSession -ErrorAction Stop
                     if ($result -ne $true)
                     {
                         $result
@@ -271,7 +271,7 @@ function New-ResourceMailboxIntermediateObject
                 if ($AnyConflicts.Count -gt 0)
                 {
                     $conflictingGUIDsString = $AnyConflicts -join '|'
-                    throw "$FriendlyIdentity has conflicts in target Exchange Organization $TargetExchangeOrganization with the following objects:  $conflictingGUIDsString"
+                    throw "$FriendlyIdentity has conflicts in target Exchange Organization with the following objects:  $conflictingGUIDsString"
                 }
             }
             catch
