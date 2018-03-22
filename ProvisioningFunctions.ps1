@@ -214,7 +214,7 @@ function New-ResourceMailboxIntermediateObject
             try
             {
                 Write-Log -Message $message -EntryType Attempting
-                $DesiredNewProxyAddress = Get-DesiredTargetPrimarySMTPAddress -TargetExchangeOrganizatio $TargetExchangeOrganization -DesiredAlias $DesiredAlias -TargetSMTPDomain $TargetSMTPDomain -Verbose -ErrorAction Stop
+                $DesiredNewProxyAddress = Get-DesiredTargetPrimarySMTPAddress -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -DesiredAlias $DesiredAlias -TargetSMTPDomain $TargetSMTPDomain -Verbose -ErrorAction Stop
                 Write-Log -Message $message -EntryType Succeeded -Verbose
             }
             catch
