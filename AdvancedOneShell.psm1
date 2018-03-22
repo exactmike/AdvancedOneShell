@@ -7,7 +7,7 @@ function Get-AOSVariable
         (
         [string]$Name
         )
-        Get-Variable -Scope Script -Name $name 
+        Get-Variable -Scope Script -Name $name
     }
 #end function Get-AOSVariable
 function Get-AOSVariableValue
@@ -27,12 +27,12 @@ function Set-AOSVariable
         ,
         $Value
         )
-        Set-Variable -Scope Script -Name $Name -Value $value  
+        Set-Variable -Scope Script -Name $Name -Value $value
     }
 #end function Set-AOSVariable
 function New-AOSVariable
     {
-        param 
+        param
         (
         [string]$Name
         ,
@@ -66,45 +66,38 @@ function Get-DesiredProxyAddresses
         [cmdletbinding()]
         param
         (
-            [parameter(Mandatory=$true)]
-            [string[]]$CurrentProxyAddresses
+            [parameter()]
+            [string[]]$CurrentProxyAddresses #Current proxy addresses to preserve or evaluate for preservation
             ,
-            [string]$DesiredPrimaryAddress
+            [string]$DesiredPrimaryAddress #replace existing primary smtp address with this value
             ,
-            [string]$DesiredOrCurrentAlias
+            [string]$DesiredOrCurrentAlias #used for calculation of a TargetAddress if required.
             ,
-            [string[]]$LegacyExchangeDNs
+            [string[]]$LegacyExchangeDNs #legacyexchangedn to convert to additional x500 address
             ,
-            [psobject[]]$Recipients
+            [psobject[]]$Recipients #Recipient objects to consume for their proxy addresses and legacyexchangedn
             ,
             [parameter()]
-            [switch]$VerifyAddTargetAddress
+            [switch]$VerifyAddTargetAddress #have the function ensure inclusion of a targetdeliverydomain proxy address.  Requires the TargetDeliveryDomain and DesiredOrCurrentAlias parameters.
             ,
-            [string]$TargetDeliveryDomain = $global:TargetDeliveryDomain
+            [string]$TargetDeliveryDomain #specify the external delivery domain - usually for cross forest or cloud like contoso.mail.onmicrosoft.com
             ,
-            [switch]$VerifySMTPAddressValidity
+            [switch]$VerifySMTPAddressValidity #verifies that the SMTP address complies with basic format requirements to be valid. See documentation for Test-EmailAddress for more information.
             ,
-            [string[]]$DomainsToRemove
+            [string[]]$DomainsToRemove #specify the domains for which to remove the associated proxy addresses. Include only the domain name, like 'contoso.com'
             ,
-            [string[]]$AddressesToRemove
+            [string[]]$AddressesToRemove #specify the complete address including the type: prefix, like smtp: or x500:
             ,
-            [string[]]$AddressesToAdd
+            [string[]]$AddressesToAdd #specifcy the complete address including the type: prefix, like smtp: or x500:
         )
-        $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
-        if($DesiredPrimaryAddress)
+        if ($PSBoundParameters.ContainsKey('CurrentProxyAddresses'))
         {
-            if (($currentPrimary = $CurrentProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | foreach {$_.split(':')[1]}).count -eq 1)
-            {
-                if ($currentPrimary -ceq $DesiredPrimaryAddress){}#if
-                else
-                {
-                    $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "smtp:$DesiredPrimaryAddress"})
-                    $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "SMTP:$currentPrimary"})
-                    $DesiredProxyAddresses += $("smtp:$currentPrimary")
-                    $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
-                }#else
-            }#if
-        }#if
+            $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
+        }
+        else
+        {
+            $DesiredProxyAddresses = @()
+        }
         if ($LegacyExchangeDNs.Count -ge 1)
         {
             foreach ($LED in $LegacyExchangeDNs)
@@ -167,14 +160,45 @@ function Get-DesiredProxyAddresses
             if ($RecipientProxyAddresses.count -ge 1)
             {
                 $add = @($RecipientProxyAddresses | Where-Object {$DesiredProxyAddresses -inotcontains $_})
-                $DesiredProxyAddresses += @($add)
+                if ($add.Count -ge 1)
+                {
+                    $DesiredProxyAddresses += @($add)
+                }
             }#if
         }#if
         if ($AddressesToAdd.Count -ge 1)
         {
-            foreach ($newadd in $AddressesToAdd)
-            {$DesiredProxyAddresses += $newadd}
+            $add = @($AddressesToAdd | Where-Object {$DesiredProxyAddresses -inotcontains $_})
+            if ($add.Count -ge 1)
+            {
+                $DesiredProxyAddresses += @($add)
+            }
         }
+        if($PSBoundParameters.ContainsKey('DesiredPrimaryAddress'))
+        {
+            $currentPrimary = @($DesiredProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | ForEach-Object {$_.split(':')[1]})
+            switch ($currentPrimary.count)
+            {
+                1
+                {
+                    if (-not $currentPrimary[0] -ceq $DesiredPrimaryAddress)
+                    {
+                        $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "smtp:$DesiredPrimaryAddress"})
+                        $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "SMTP:$($currentPrimary[0])"})
+                        $DesiredProxyAddresses += $("smtp:$($currentPrimary[0])")
+                        $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
+                    }
+                }#end 1
+                0
+                {
+                    $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
+                }
+                {$_ -ge 2}
+                {
+                    throw('Multiple Primary SMTP addresses detected: Invalid Configuration')
+                }
+            }#end switch
+        }#end if
         if ($VerifySMTPAddressValidity -eq $true)
         {
             $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
@@ -200,7 +224,7 @@ function Get-DesiredProxyAddresses
                 $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
             }
         }
-        Write-Output -InputObject $DesiredProxyAddresses
+        $DesiredProxyAddresses
     }
 #end function get-desiredproxyaddresses
 function Get-RecipientType
@@ -220,7 +244,7 @@ function Get-RecipientType
                     [pscustomobject]@{Value=3;Type='Dynamic Distribution Group';Name='DynamicDistributionGroup'}
                     [pscustomobject]@{Value=1073741824;Type='User Mailbox (User, Shared, or Linked)';Name='UserMailbox'}
                     [pscustomobject]@{Value=7;Type='Room Mailbox';Name='RoomMailbox'}
-                    [pscustomobject]@{Value=8;Type='Equipment Mailbox';Name='EquipmentMailbox'}            
+                    [pscustomobject]@{Value=8;Type='Equipment Mailbox';Name='EquipmentMailbox'}
                     [pscustomobject]@{Value=6;Type='Mail User, Mail Contact';Name='RemoteMailUser'}
                     [pscustomobject]@{Value=2;Type='Public Folder';Name='PublicFolder'}
                     [pscustomobject]@{Value=4;Type='Outlook Only:Organization';Name='Organization'}
@@ -263,7 +287,7 @@ function Get-RecipientType
                     [pscustomobject]@{Value=2147483648;Type='Remote Mailbox';Name='RemoteMailbox'}
                     [pscustomobject]@{Value=137438953472;Type='Team Mailbox';Name='TeamMailbox'}
         )
-        switch ($PSCmdlet.ParameterSetName) 
+        switch ($PSCmdlet.ParameterSetName)
         {
             'DisplayType'
             {
@@ -475,7 +499,7 @@ function Update-PostMigrationMailboxUser
                         0 {
                             Write-Log -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
-                            Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append 
+                            Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                             throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
                         }#0
                         Default {
@@ -1161,7 +1185,7 @@ function Add-LicenseToMSOLUser
                             Write-Log -Message $_.tostring() -ErrorLog -Verbose
                             continue nextID
                         }
-                    }#if usage location is null            
+                    }#if usage location is null
                     $message = "Add $AccountSKUID license to MSOL User $ID"
                     $setMSOLUserLicenseParams = @{
                         ObjectID = $MSOLUser.ObjectID.guid
@@ -1218,7 +1242,7 @@ function Set-ExchangeAttributesOnTargetObject
             ,
             [parameter(Mandatory=$true,ParameterSetName='SourceLookup')]
             [ValidateScript({$_ -in $(Get-PSDrive -PSProvider ActiveDirectory | Select-Object -ExpandProperty Name)})]
-            [string]$SourceAD 
+            [string]$SourceAD
             ,
             [parameter(Mandatory = $true,ParameterSetName='SourceLookup')]
             [validateset('SAMAccountName','UserPrincipalName','ProxyAddress','Mail','employeeNumber','extensionattribute5','extensionattribute11','DistinguishedName','CanonicalName','ObjectGUID','mS-DS-ConsistencyGuid','SID','msExchMasterAccountSID')]
@@ -1280,7 +1304,7 @@ function Set-ExchangeAttributesOnTargetObject
             ,
             [switch]$UpdateTargetRecipient
             ,
-            [string[]]$TargetAttributestoClear = 
+            [string[]]$TargetAttributestoClear =
                 $(@(
                     'Mail'
                     'mailNickName'
@@ -1303,7 +1327,7 @@ function Set-ExchangeAttributesOnTargetObject
                 ))
             ,
             [int]$ADSyncDelayInSeconds = 90
-            , 
+            ,
             [switch]$ClearGlobalTrackingVariables
             ,
             [switch]$TestOnly
@@ -1322,10 +1346,10 @@ function Set-ExchangeAttributesOnTargetObject
             ,
             [switch]$perUserDirSyncTest
         )#Param
-        begin 
+        begin
         {
             #Set up the global tracking/reporting variables if needed and/or clear them if requested
-            $GlobalTrackingVariables = 
+            $GlobalTrackingVariables =
                 @(
                     'SEATO_Exceptions'
                     ,'SEATO_ProcessedUsers'
@@ -1337,9 +1361,9 @@ function Set-ExchangeAttributesOnTargetObject
                     ,'SEATO_OriginalSourceUsers'
                     ,'SEATO_MembershipAddFailures'
                 )
-            if ($ClearGlobalTrackingVariables) 
+            if ($ClearGlobalTrackingVariables)
             {
-                foreach ($var in $GlobalTrackingVariables) 
+                foreach ($var in $GlobalTrackingVariables)
                 {
                     Set-Variable -Scope Global -Name $var -Value @()
                 }
@@ -1356,22 +1380,22 @@ function Set-ExchangeAttributesOnTargetObject
         {
         #Process processes all incoming Source Lookup Values or Source Data and outputs Source Object Data
         #setup for Source Operation specified
-            switch ($PSCmdlet.ParameterSetName) 
+            switch ($PSCmdlet.ParameterSetName)
             {
-                'SourceLookup' 
+                'SourceLookup'
                 {
                     #Populate SourceData
                     #############################################################
                     #lookup user in the Source AD
                     #############################################################
-                    $SourceData = 
+                    $SourceData =
                     @(
                         $recordcount = $SourceLookupValue.Count
                         $cr = 0
-                        foreach ($value in $SourceLookupValue) 
+                        foreach ($value in $SourceLookupValue)
                         {
                             $cr++
-                            $writeProgressParams = 
+                            $writeProgressParams =
                                 @{
                                     Activity = "Find Source Object"
                                     Status = "Processing Record $cr of $recordcount : $value"
@@ -1380,7 +1404,7 @@ function Set-ExchangeAttributesOnTargetObject
                             $writeProgressParams.currentoperation = "Find User with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD"
                             Write-Progress @writeProgressParams
                             $TrialSADU = $null
-                            $TrialSADU = 
+                            $TrialSADU =
                             @(
                                 try {
                                     Write-Log -message $writeProgressParams.currentoperation -EntryType Attempting
@@ -1407,13 +1431,13 @@ function Set-ExchangeAttributesOnTargetObject
                                 }#0
                                 Default {
                                     Write-Log -message "FAILED: Found multiple ambiguous Matching Users with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD" -Verbose
-                                    Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $ID -RelatedObjectIdentifierType $SourceLookupAttribute  
+                                    Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $ID -RelatedObjectIdentifierType $SourceLookupAttribute
                                 }#Default
                             }#switch $SADU.count
                         }#foreach $value in $SourceLookupValue
                     )#SourceData Array
                 }#SourceLookup
-                'SourceDataProvided' 
+                'SourceDataProvided'
                 {
                     #validate attributes in SourceData?
                 }#SourceDataProvided
@@ -1424,11 +1448,11 @@ function Set-ExchangeAttributesOnTargetObject
         {
         #End processes the Source Object Data, finds target and related object (such as contacts) and makes determinations about processing in the Intermediate Object stage
         #End then processes the objects, adding/adjusting attribute values on the target objects and deleting source and related objects if specified
-            $IntermediateObjects = 
+            $IntermediateObjects =
             @(
                 $recordcount = $SourceData.Count
                 $cr = 0
-                :nextID foreach ($SADU in $SourceData) 
+                :nextID foreach ($SADU in $SourceData)
                 {
                     #region Preparing To Generate Intermediate Object
                     #region FindTADU
@@ -1442,11 +1466,11 @@ function Set-ExchangeAttributesOnTargetObject
                         $trySecondary = $true
                         $SecondaryID = $SADU.$targetLookupSecondaryValue
                     }#if
-                    else 
+                    else
                     {
                         $trySecondary = $false
                     }#else
-                    $writeProgressParams = 
+                    $writeProgressParams =
                     @{
                         Activity = "Preparing for User Updates"
                         CurrentOperation = "Find Target Object with $ID in $TargetLookupPrimaryAttribute in $targetAD"
@@ -1454,10 +1478,10 @@ function Set-ExchangeAttributesOnTargetObject
                         PercentComplete = $cr/$RecordCount*100
                     }#writeProgressParams
                     Write-Progress @writeProgressParams
-                    try 
+                    try
                     {
                         Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Attempting
-                        $TrialTADU = 
+                        $TrialTADU =
                         @(
                             if (-not [string]::IsNullOrWhiteSpace($id))
                             {
@@ -1496,28 +1520,28 @@ function Set-ExchangeAttributesOnTargetObject
                         }#if
                         Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Succeeded
                     }#try
-                    catch 
+                    catch
                     {
                         Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Failed -Verbose -ErrorLog
                         Write-Log -Message $_.tostring() -ErrorLog
-                        Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
+                        Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                         continue nextID
                     }#catch
                     #Determine action based on the results of the lookup attempt in the target AD
                     #filter SADU out of TADU results
                     $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
-                    switch ($TrialTADU.count) 
+                    switch ($TrialTADU.count)
                     {
-                        1 
+                        1
                         {
                             Write-Log -message "Succeeded: Found exactly 1 Matching User" -Verbose
                             $TADU = $TrialTADU[0]
                             $TADUGUID = $TADU.objectguid.guid
                             Write-Log -Message "Target AD User Identified in $TargetAD with ObjectGUID: $TADUGUID" -Verbose -EntryType Notification
                         }#1
-                        0 
+                        0
                         {
-                            if ($SADU.enabled) 
+                            if ($SADU.enabled)
                             {
                                 Write-Log -Message "Found 0 Matching Users for User $ID, but Source User Object is Enabled." -Verbose -EntryType Notification
                                 $TADU = $SADU
@@ -1525,14 +1549,14 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             else {
                                 Write-Log -message "Found 0 Matching Users for User $ID" -Verbose -EntryType Failed
-                                Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
+                                Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                                 continue nextID
                             }
                         }#0
-                        Default 
+                        Default
                         {#check for ambiguous results
                             Write-Log -Message "Find AD User returned multiple objects/ambiguous results for User $ID." -Verbose -ErrorLog -EntryType Failed
-                            Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
+                            Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                             continue nextID
                         }
                     }#switch
@@ -1542,22 +1566,22 @@ function Set-ExchangeAttributesOnTargetObject
                     Write-Progress @writeProgressParams
                     #Determine Source Object Exchange Recipient Status
                     $SourceUserObjectIsExchangeRecipient = $(
-                        if ($SADU.msExchRecipientTypeDetails -ne $null -or $SADU.msExchRecipientDisplayType -ne $null) 
+                        if ($SADU.msExchRecipientTypeDetails -ne $null -or $SADU.msExchRecipientDisplayType -ne $null)
                         {
                             $true
-                        } 
-                        else 
+                        }
+                        else
                         {
                             $false
                         }
                     )#SourceUserObjectIsExchangeRecipient
                     if ($SourceUserObjectIsExchangeRecipient)
                     {
-                        try 
+                        try
                         {
                             $SADUCurrentPrimarySmtpAddress = Find-PrimarySMTPAddress -ProxyAddresses $SADU.proxyaddresses -Identity $ID -ErrorAction Stop
                         }#try
-                        catch 
+                        catch
                         {
                             Write-Log -Message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserPrimarySMTPNotFound' -FailureGroup NotProcessed
@@ -1574,28 +1598,28 @@ function Set-ExchangeAttributesOnTargetObject
                     #region FindTADUExchangeDetails
                     #Determine Target Object Exchange Recipient Status
                     $TargetUserObjectIsExchangeRecipient = $(
-                        if ($TADUGUID -eq $SADUGUID) 
+                        if ($TADUGUID -eq $SADUGUID)
                         {
                             $false
                         }
-                        else 
+                        else
                         {
-                            if ($TADU.msExchRecipientTypeDetails -ne $null -or $TADU.msExchRecipientDisplayType -ne $null) 
+                            if ($TADU.msExchRecipientTypeDetails -ne $null -or $TADU.msExchRecipientDisplayType -ne $null)
                             {
                                 $true
-                            } 
-                            else 
+                            }
+                            else
                             {
                                 $false
                             }
                         }
                     )
                     if ($TargetUserObjectIsExchangeRecipient) {
-                        try 
+                        try
                         {
                             $TADUCurrentPrimarySmtpAddress = Find-PrimarySMTPAddress -ProxyAddresses $TADU.proxyaddresses -Identity $ID -ErrorAction Stop
                         }#try
-                        catch 
+                        catch
                         {
                             Write-Log -Message $_.tostring() -ErrorLog
                             #Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserPrimarySMTPNotFound' -FailureGroup NotProcessed
@@ -1616,25 +1640,25 @@ function Set-ExchangeAttributesOnTargetObject
                     $addr = $null
                     $MailContact = $null
                     #look for contacts via proxy addresses
-                    :nextAddr foreach ($addr in $SADU.proxyaddresses) 
+                    :nextAddr foreach ($addr in $SADU.proxyaddresses)
                     {
-                        try 
+                        try
                         {
                             #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType ProxyAddress -AmbiguousAllowed -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
                             #Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
-                        catch 
+                        catch
                         {
                             Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
                             Write-Log -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                             continue nextAddr
                         }#catch
-                        If ($MailContact.count -ge 1) 
+                        If ($MailContact.count -ge 1)
                         {
                             Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
-                            if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname) 
+                            if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname)
                             {
                                 $MailContacts += $MailContact
                                 $Global:SEATO_MailContactsFound += $MailContact
@@ -1642,22 +1666,22 @@ function Set-ExchangeAttributesOnTargetObject
                         }#if
                     }#foreach
                     #look for contacts via target address if target was not in proxy addresses
-                    if ($SADU.TargetAddress -ne $null -and $SADU.proxyaddresses -notcontains $SADU.TargetAddress) 
+                    if ($SADU.TargetAddress -ne $null -and $SADU.proxyaddresses -notcontains $SADU.TargetAddress)
                     {
                         $addr = $SADU.targetaddress
-                        try 
+                        try
                         {
                             #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType ProxyAddress -AmbiguousAllowed -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
                             #Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
-                        catch 
+                        catch
                         {
                             Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
                             Write-Log -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }#catch
-                        If ($MailContact.count -ge 1) 
+                        If ($MailContact.count -ge 1)
                         {
                             Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
                             if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname) {
@@ -1670,22 +1694,22 @@ function Set-ExchangeAttributesOnTargetObject
                     if (-not [string]::IsNullOrWhiteSpace($SADU.altRecipient) -and $SADU.altRecipent -ne $TADU.distinguishedName)
                     {
                         $addr = $SADU.altRecipient
-                        try 
+                        try
                         {
                             #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType DistinguishedName -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
                             Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
-                        catch 
+                        catch
                         {
                             Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
                             Write-Log -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }#catch
-                        If ($MailContact.count -ge 1) 
+                        If ($MailContact.count -ge 1)
                         {
                             Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
-                            if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname) 
+                            if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname)
                             {
                                 $MailContacts += $MailContact
                                 $Global:SEATO_MailContactsFound += $MailContact
@@ -1698,7 +1722,7 @@ function Set-ExchangeAttributesOnTargetObject
                     #First, check desired Alias and desired PrimarySMTPAddress for conflicts
                     $AliasAndPrimarySMTPAttemptCount = 0
                     $ExemptObjectGUIDs = @($SADUGUID,$TADUGUID)
-                    If ($MailContacts.Count -ge 1) 
+                    If ($MailContacts.Count -ge 1)
                     {
                         $ExemptObjectGUIDs += @($MailContacts | foreach {$_.ObjectGUID.guid})
                     }
@@ -1707,19 +1731,19 @@ function Set-ExchangeAttributesOnTargetObject
                         $PrimarySMTPPass = $false
                         $AliasAndPrimarySMTPAttemptCount++
                         switch ($AliasAndPrimarySMTPAttemptCount) {
-                            1 
+                            1
                             {
                                 $DesiredAlias = $SADU.givenname.substring(0,1) + $SADU.surname
                                 #remove spaces and other special characters
                                 $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                             }
-                            2 
+                            2
                             {
                                 $DesiredAlias = $SADU.givenname.substring(0,2) + $SADU.surname
                                 #remove spaces and other special characters
                                 $DesiredAlias = $DesiredAlias -replace '\s|[^1-9a-zA-Z_-]',''
                             }
-                            3 
+                            3
                             {
                                 $DesiredAlias = $SADU.givenname + '.' + $SADU.surname
                                 #remove spaces and other special characters
@@ -1746,7 +1770,7 @@ function Set-ExchangeAttributesOnTargetObject
                         {
                             $AliasPass = $true
                         }
-                        if (Test-ExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization) 
+                        if (Test-ExchangeProxyAddress -ProxyAddress $DesiredUPNAndPrimarySMTPAddress -ProxyAddressType SMTP -ExemptObjectGUIDs $ExemptObjectGUIDs -ExchangeOrganization $TargetExchangeOrganization)
                         {
                             $PrimarySMTPPass = $true
                         }
@@ -1867,9 +1891,9 @@ function Set-ExchangeAttributesOnTargetObject
             $recordcount = $IntermediateObjects.Count
             $cr = 0
             #Write to Target Objects, Delete Source Objects, Update Exchange Recipient for Target Objects
-            $ProcessedObjects = 
+            $ProcessedObjects =
             @(
-                :nextIntObj 
+                :nextIntObj
                 foreach ($IntObj in $IntermediateObjects) {
                     #region PrepareForTargetOperation
                     $cr++
@@ -1929,11 +1953,11 @@ function Set-ExchangeAttributesOnTargetObject
                             $TargetOperation = 'None'
                         }
                         else
-                        { 
+                        {
                             $TargetOperation = 'EnableRemoteMailbox'
                         }
                     }
-                    $intobj | Add-Member -MemberType NoteProperty -Name TargetOperation -Value $TargetOperation 
+                    $intobj | Add-Member -MemberType NoteProperty -Name TargetOperation -Value $TargetOperation
                     #endregion DetermineTargetOperation
                     #region PerformTargetAttributeUpdate
                     if ($TestOnly)
@@ -1944,13 +1968,13 @@ function Set-ExchangeAttributesOnTargetObject
                     {
                         Push-Location
                         Set-Location -Path $($TargetAD + ':\')
-                    switch ($TargetOperation) 
+                    switch ($TargetOperation)
                     {
                         'None'
                         {
-                            Write-Output -InputObject $IntObj                  
+                            Write-Output -InputObject $IntObj
                             Write-Log -Message "Target Operation Could Not Be Determined for $SADUGUID" -Verbose -ErrorLog -EntryType Failed
-                            Export-FailureRecord -Identity $ID -ExceptionCode 'TargetOperationNotDetermined' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID' 
+                            Export-FailureRecord -Identity $ID -ExceptionCode 'TargetOperationNotDetermined' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                             continue nextIntObj
                         }
                         'EnableRemoteMailbox'
@@ -2190,7 +2214,7 @@ function Set-ExchangeAttributesOnTargetObject
                             #############################################################
                             #ClearTargetAttributes
                             #Since this is an existing mailbox, we won't clear all the mail attributes
-                            $ExemptTargetAttributesForExistingMailbox = 
+                            $ExemptTargetAttributesForExistingMailbox =
                             @(
                                 'msExchArchiveGUID'
                                 'msExchArchiveName'
@@ -2781,7 +2805,7 @@ function Set-ExchangeAttributesOnTargetObject
                 $cr = 0
                 Write-Log -Message "$recordcount Objects Processed Locally" -EntryType Notification -Verbose
                 if ($ProcessedObjects.Count -ge 1) {
-                    #Start a Directory Synchronization to Azure AD Tenant 
+                    #Start a Directory Synchronization to Azure AD Tenant
                     #Wait first for AD replication
                     Write-Log -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
                     New-Timer -units Seconds -length $ADSyncDelayInSeconds -showprogress -Frequency 5 -voice
@@ -2791,7 +2815,7 @@ function Set-ExchangeAttributesOnTargetObject
                 }
                 foreach ($IntObj in $ProcessedObjects) {
                     $cr++
-                    $writeProgressParams = 
+                    $writeProgressParams =
                     @{
                         Activity = "Performing Post-Attribute/Object Update Operations"
                         CurrentOperation = "Processing Object $($IntObj.DesiredUPNAndPrimarySMTPAddress)"
@@ -2802,7 +2826,7 @@ function Set-ExchangeAttributesOnTargetObject
                     $SADUGUID = $IntObj.SourceUserObjectGUID
                     $TADUGUID = $IntObj.TargetUserObjectGUID
                     $TADU = Find-ADUser -Identity $TADUGUID -IdentityType ObjectGUID -ActiveDirectoryInstance $TargetAD
-                    $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties             
+                    $PropertySet = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes $MultiValuedADAttributesToRetrieve -ScalarAttributes $ScalarADAttributesToRetrieve -SuppressCommonADProperties
                     $Global:SEATO_FullProcessedUsers += $TADU | Select-Object -Property $PropertySet -ExcludeProperty msExchPoliciesExcluded
                     #region WaitforDirectorySynchronization
                     #############################################################
@@ -2824,7 +2848,7 @@ function Set-ExchangeAttributesOnTargetObject
                         #endregion WaitforDirectorySynchronization
                         #region SetMailboxForwarding
                         if ($DirSyncTest) {
-                            switch -Wildcard ($IntObj.TargetOperation) 
+                            switch -Wildcard ($IntObj.TargetOperation)
                             {
                                 'EnableRemoteMailbox'
                                 {
@@ -2873,10 +2897,10 @@ function Set-ExchangeAttributesOnTargetObject
                                             expression = {$_.DesiredUPNAndPrimarySMTPAddress}
                                         }
                                     )
-                                    try 
+                                    try
                                     {
                                         $message = "Create Move Request for $TADUGUID"
-                                        Write-Log -Message $message -EntryType Attempting 
+                                        Write-Log -Message $message -EntryType Attempting
                                         $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
                                         $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
                                         if ($MR.Count -eq 1)
@@ -2887,9 +2911,9 @@ function Set-ExchangeAttributesOnTargetObject
                                             #Write-Log -Message $_.tostring() -ErrorLog
                                             Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                                         }
-                                        
+
                                     }
-                                    catch 
+                                    catch
                                     {
                                         Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
                                         Write-Log -Message $_.tostring() -ErrorLog
@@ -2901,11 +2925,11 @@ function Set-ExchangeAttributesOnTargetObject
                         else {
                             $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
                             Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization 
+                            Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization
                         }
                     }
                     if ($SetMailboxForwardingStatus -and $IntObj.TargetOperation -eq 'EnableRemoteMailbox') {
-                        $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)" 
+                        $OLMailbox = Invoke-ExchangeCommand -cmdlet 'Get-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress)"
                         $propertyset = Get-CSVExportPropertySet -Delimiter '|' -MultiValuedAttributes EmailAddresses -ScalarAttributes PrimarySMTPAddress,ForwardingSmtpAddress
                         $OLMailboxSummary = $OLMailbox | Select-Object -Property $PropertySet
                         $Global:SEATO_OLMailboxSummary += $OLMailboxSummary
@@ -2956,13 +2980,13 @@ function Add-EmailAddress
         param
         (
         [string]$Identity
-        , 
+        ,
         [string[]]$EmailAddresses
-        , 
+        ,
         [string]$ExchangeOrganization
         )
         #Get the Recipient Object for the specified Identity
-        try 
+        try
         {
             $message = "Get Recipient for Identity $Identity"
             #Write-Log -Message $message -EntryType Attempting -Verbose
@@ -2973,7 +2997,7 @@ function Add-EmailAddress
             $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -splat $Splat -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
             #Write-Log -Message $message -EntryType Succeeded -Verbose
         }
-        catch 
+        catch
         {
             Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
@@ -2981,7 +3005,7 @@ function Add-EmailAddress
         }
         #Determine the Set cmdlet to use based on the Recipient Object
         $cmdlet = Get-RecipientCmdlet -Recipient $Recipient -verb Set -ErrorAction Stop
-        try 
+        try
         {
             $message = "Add Email Address $($EmailAddresses -join ',') to recipient $Identity"
             Write-Log -Message $message -EntryType Attempting -Verbose
@@ -2993,7 +3017,7 @@ function Add-EmailAddress
             Invoke-ExchangeCommand -cmdlet $cmdlet -splat $splat -ExchangeOrganization $ExchangeOrganization -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded -Verbose
         }
-        catch 
+        catch
         {
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             Write-Log -Message $_.tostring() -ErrorLog
@@ -3006,13 +3030,13 @@ function Remove-EmailAddress
         param
         (
         [string]$Identity
-        , 
+        ,
         [string[]]$EmailAddresses
-        , 
+        ,
         [string]$ExchangeOrganization
         )
         #Get the Recipient Object for the specified Identity
-        try 
+        try
         {
             $message = "Get Recipient for Identity $Identity"
             #Write-Log -Message $message -EntryType Attempting -Verbose
@@ -3023,7 +3047,7 @@ function Remove-EmailAddress
             $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -splat $Splat -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
             #Write-Log -Message $message -EntryType Succeeded -Verbose
         }
-        catch 
+        catch
         {
             Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
             Write-Log -Message $_.tostring() -ErrorLog
@@ -3031,7 +3055,7 @@ function Remove-EmailAddress
         }
         #Determine the Set cmdlet to use based on the Recipient Object
         $cmdlet = Get-RecipientCmdlet -Recipient $Recipient -verb Set -ErrorAction Stop
-        try 
+        try
         {
             $message = "Remove Email Address $($EmailAddresses -join ',') from recipient $Identity"
             Write-Log -Message $message -EntryType Attempting -Verbose
@@ -3043,7 +3067,7 @@ function Remove-EmailAddress
             Invoke-ExchangeCommand -cmdlet $cmdlet -splat $splat -ExchangeOrganization $ExchangeOrganization -ErrorAction Stop
             Write-Log -Message $message -EntryType Succeeded -Verbose
         }
-        catch 
+        catch
         {
             Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
             Write-Log -Message $_.tostring() -ErrorLog
@@ -3194,7 +3218,7 @@ function Get-AllADRecipientObjects
         if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
     }
 #end function Get-AllADRecipientObjects
-function Get-ADRecipientsWithConflictingProxyAddresses 
+function Get-ADRecipientsWithConflictingProxyAddresses
     {
         [cmdletbinding()]
         param
@@ -3203,17 +3227,17 @@ function Get-ADRecipientsWithConflictingProxyAddresses
             ,
             $TargetExchangeOrganization
         )
-        foreach ($sr in $SourceRecipients) 
+        foreach ($sr in $SourceRecipients)
         {
             $ProxyAddressesToCheck = $sr.proxyaddresses | Where-Object -FilterScript {$_ -ilike 'x500:*' -or $_ -ilike 'smtp:*'}
-            foreach ($pa2c in $ProxyAddressesToCheck) 
+            foreach ($pa2c in $ProxyAddressesToCheck)
             {
             $type = $pa2c.split(':')[0]
             if (Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType $type -ExchangeOrganization $TargetExchangeOrganization)
             {
                     Write-Log -Message "No Conflict for $pa2c" -EntryType Notification -Verbose
             }
-            else 
+            else
             {
                     $conflicts = @(Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType $type -ExchangeOrganization $TargetExchangeOrganization -ReturnConflicts)
                     [pscustomobject]@{
@@ -3243,7 +3267,7 @@ function Get-ADRecipientsWithConflictingAlias
         [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
         [string]$SourcePrefix
         )
-        foreach ($sr in $SourceRecipients) 
+        foreach ($sr in $SourceRecipients)
         {
             $Alias = $sr.mailNickName
             $Alias = $Alias -replace '\s|[^1-9a-zA-Z_-]',''
@@ -3255,11 +3279,11 @@ function Get-ADRecipientsWithConflictingAlias
                 $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
                 $Alias = $NewAlias
             }
-            if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization) 
+            if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization)
             {
                 Write-Log -Message "No Conflict for $Alias" -EntryType Notification -Verbose
             }
-            else 
+            else
             {
                 $conflicts = @(Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization -ReturnConflicts)
                 [pscustomobject]@{
@@ -3287,13 +3311,13 @@ function New-SourceTargetRecipientMap
         foreach ($SR in $SourceRecipients)
         {
             $ProxyAddressesToCheck = $sr.proxyaddresses | Where-Object -FilterScript {$_ -ilike 'smtp:*'}
-            $rawrecipientmatches = 
+            $rawrecipientmatches =
             @(
                 foreach ($pa2c in $ProxyAddressesToCheck)
                 {
                     if (Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeOrganization $TargetExchangeOrganization)
                     {$null}
-                    else 
+                    else
                     {
                         Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeOrganization $TargetExchangeOrganization -ReturnConflicts
                     }
@@ -3335,9 +3359,9 @@ function Get-TargetRecipientFromMap
         {$null}
         else
         {
-            $TargetRecipients = 
+            $TargetRecipients =
             @(
-                foreach ($id in $TargetRecipientGUID) 
+                foreach ($id in $TargetRecipientGUID)
                 {
                     $cmdlet = Get-RecipientCmdlet -Identity $id -verb Get -ExchangeOrganization $TargetExchangeOrganization
                     Invoke-ExchangeCommand -cmdlet $cmdlet -string "-Identity $id" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
@@ -3446,7 +3470,7 @@ function Publish-Groups
         [switch]$HideContacts
         )
         if (-not (Test-Path variable:\IntermediateGroupObjects)) {
-            New-Variable -Name IntermediateGroupObjects -Value @() -Scope Global 
+            New-Variable -Name IntermediateGroupObjects -Value @() -Scope Global
         }
         $csgCount = 0
         $sgCount = $SourceGroups.Count
@@ -3458,7 +3482,7 @@ function Publish-Groups
         #region Prepare
             $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
             Write-Log -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
-            $WriteProgressParams = 
+            $WriteProgressParams =
             @{
                 Activity = "Provisioning $($SourceGroups.count) Groups into $TargetExchangeOrganization, $TargetGroupOU"
                 Status = "Working $csgCount of $($SourceGroups.count)"
@@ -3470,7 +3494,7 @@ function Publish-Groups
             $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $TargetSMTPDomain
             $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
             $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
-            $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -TargetExchangeOrganization $TargetExchangeOrganization 
+            $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -TargetExchangeOrganization $TargetExchangeOrganization
             $GetDesiredProxyAddressesParams = @{
                 CurrentProxyAddresses = $sg.proxyAddresses
                 DesiredPrimaryAddress = $desiredPrimarySMTPAddress
@@ -3479,7 +3503,7 @@ function Publish-Groups
                 LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
             }
             $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
-        #endregion Prepare 
+        #endregion Prepare
         #region GetAndMapGroupMembers
             $AllSourceMembers =@($sg.Members | foreach {if ($SourceRecipientDNHash.ContainsKey($_)) {$SourceRecipientDNHash.$($_)}})
             $AllSourceUserMembers = @($AllSourceMembers | ? ObjectClass -eq 'User')
@@ -3495,12 +3519,12 @@ function Publish-Groups
             $nonMappedTargetMemberContacts = @($AllSourceContactMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
         #endregion GetAndMapGroupMembers
         #region IntermediateGroupObject
-            $intermediateGroupObject = 
+            $intermediateGroupObject =
             [pscustomobject]@{
                 DesiredAlias = $desiredAlias
                 DesiredName = $desiredName
                 DesiredPrimarySMTPAddress = $desiredPrimarySMTPAddress
-                DesiredProxyAddresses = $DesiredProxyAddresses        
+                DesiredProxyAddresses = $DesiredProxyAddresses
                 TargetRecipientGUIDs = @($targetRecipientGUIDs)
                 TargetRecipients = @($targetRecipients)
                 MappedTargetMemberUsers = @($mappedTargetMemberUsers)
@@ -3511,12 +3535,12 @@ function Publish-Groups
                 NonMappedMemberContacts = @($nonMappedTargetMemberContacts | Select-Object -ExpandProperty DistinguishedName)
                 NonMappedMemberGroups = @($nonMappedTargetMemberGroups | Select-Object -ExpandProperty DistinguishedName)
                 SourcePublicFolderMembers = @($AllSourcePublicFolderMembers | Select-Object -ExpandProperty Mail)
-                SourceObject = $sg        
+                SourceObject = $sg
             }
             $Global:intermediateGroupObjects += $intermediateGroupObject
             Export-Data -DataToExportTitle $("Group-" + $DesiredAlias) -DataToExport $intermediateGroupObject -Depth 3 -DataType json
         #endregion IntermediateGroupObject
-            if ($TestOnly) 
+            if ($TestOnly)
             {
                 $intermediateGroupObject
             }
@@ -3527,15 +3551,15 @@ function Publish-Groups
                     $message = "Remove target recipient $($tr.Alias) for Group $DesiredAlias"
                     Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
                     $cmdlet = Get-RecipientCmdlet -Recipient $tr -verb Remove
-                    $rrParams = 
+                    $rrParams =
                     @{
                         Identity = $($tr.Guid.guid)
                         Confirm = $false
                         ErrorAction = 'Stop'
                     }
-                    try 
+                    try
                     {
-                        Write-Log -Message $message -EntryType Attempting 
+                        Write-Log -Message $message -EntryType Attempting
                         Invoke-ExchangeCommand -cmdlet $cmdlet -splat $rrParams -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
                         Write-Log -Message $message -EntryType Succeeded
                     }
@@ -3559,7 +3583,7 @@ function Publish-Groups
                     Export-Data -DataToExport $nmc -DataToExportTitle "ContactCreationFailure-$($nmc.MailNickName)" -DataType json -Depth 3
                     Continue
                 }
-                $intermediateContactObject = 
+                $intermediateContactObject =
                 [pscustomobject]@{
                     DesiredAlias = $ContactDesiredAlias
                     DesiredName = $ContactDesiredName
@@ -3573,7 +3597,7 @@ function Publish-Groups
                 }#if
                 else
                 {
-                    $newMailContactParams = 
+                    $newMailContactParams =
                     @{
                         Name = $ContactDesiredName
                         DisplayName = $ContactDesiredName
@@ -3582,7 +3606,7 @@ function Publish-Groups
                         OrganizationalUnit = $TargetContactOU
                         ErrorAction = 'Stop'
                     }
-                    $setMailContactParams = 
+                    $setMailContactParams =
                     @{
                         Identity = $ContactDesiredAlias
                         EmailAddressPolicyEnabled = $false
@@ -3625,13 +3649,13 @@ function Publish-Groups
                         Write-Log -Message $message -EntryType Succeeded
                         foreach ($pa in $ContactDesiredProxyAddresses) {
                             $type = $pa.split(':')[0]
-                            if ($type -in 'SMTP','x500') 
+                            if ($type -in 'SMTP','x500')
                             {
-                                    Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $pa -ProxyAddressType $type -ObjectGUID $newContact.guid.guid 
+                                    Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $pa -ProxyAddressType $type -ObjectGUID $newContact.guid.guid
                             }
-                    
+
                                 }
-                                Add-ExchangeAliasToTestExchangeAlias -Alias $ContactDesiredAlias -ObjectGUID $newContact.guid.guid 
+                                Add-ExchangeAliasToTestExchangeAlias -Alias $ContactDesiredAlias -ObjectGUID $newContact.guid.guid
                     }
                     catch
                     {
@@ -3641,13 +3665,13 @@ function Publish-Groups
                 }#else
             }#foreach $NMC
             #endregion CreateNeededContacts
-            #region ProvisionDistributionGroup    
+            #region ProvisionDistributionGroup
             if ($TestOnly)
             {}
             else
             {
             $AliasLength = [math]::Min($desiredAlias.length,20)
-            $newDistributionGroupParams = 
+            $newDistributionGroupParams =
             @{
                 DisplayName = $desiredName
                 Name = $desiredName
@@ -3660,7 +3684,7 @@ function Publish-Groups
                 OrganizationalUnit = $TargetGroupOU
                 ErrorAction = 'Stop'
             }
-            $setDistributionGroupParams = 
+            $setDistributionGroupParams =
             @{
                 Identity = $desiredAlias
                 EmailAddresses = $DesiredProxyAddresses
@@ -3676,7 +3700,7 @@ function Publish-Groups
                 Start-Sleep -Seconds 1
                 $message = "Find Newly Created Group $desiredAlias"
                 $found = $false
-                Do 
+                Do
                 {
                     #Write-Log -Message $message -EntryType Attempting
                     $group = @(Invoke-ExchangeCommand -cmdlet 'Get-DistributionGroup' -string "-Identity $desiredAlias -ErrorAction SilentlyContinue" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction SilentlyContinue)
@@ -3687,7 +3711,7 @@ function Publish-Groups
                     }
                     Start-Sleep -Seconds 1
                 }
-                Until 
+                Until
                 ($found -eq $true)
                 $message = "Set Group $desiredAlias Attributes"
                 Write-Log -Message $message -EntryType Attempting
@@ -3695,13 +3719,13 @@ function Publish-Groups
                 Write-Log -Message $message -EntryType Succeeded
                 foreach ($pa in $DesiredProxyAddresses) {
                     $type = $pa.split(':')[0]
-                    if ($type -in 'SMTP','x500') 
+                    if ($type -in 'SMTP','x500')
                     {
                         Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $pa -ProxyAddressType $type -ObjectGUID $newgroup.guid.guid
                     }
                 }
-                Add-ExchangeAliasToTestExchangeAlias -Alias $desiredAlias -ObjectGUID $newgroup.guid.guid 
-                Write-Log -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose 
+                Add-ExchangeAliasToTestExchangeAlias -Alias $desiredAlias -ObjectGUID $newgroup.guid.guid
+                Write-Log -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose
             }
             catch
             {
@@ -3900,7 +3924,7 @@ Function New-MailFlowContactFromMailbox
             }
         }
         $message = "Get Recipient Object for Identity ($Identity) from Source Exchange Organization ($SourceExchangeOrganization)"
-        Try 
+        Try
         {
             Write-Log -Message $message -EntryType Attempting
             $SourceRecipientObject = @(Invoke-ExchangeCommand @GetRecipientParams)
@@ -3923,7 +3947,7 @@ Function New-MailFlowContactFromMailbox
                 ErrorAction = 'Stop'
             }
         }
-        Try 
+        Try
         {
             Write-Log -Message $message -EntryType Attempting
             $SourceRecipientObject = @(Invoke-ExchangeCommand @GetFullRecipientCmdletParams)
@@ -3944,7 +3968,7 @@ Function New-MailFlowContactFromMailbox
             ErrorAction = 'Stop'
         }
         $message = "Get Desired Alias for Identity ($Identity) from Target Exchange Organization ($TargetExchangeOrganization)"
-        Try 
+        Try
         {
             Write-Log -Message $message -EntryType Attempting
             $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
@@ -3977,7 +4001,7 @@ Function New-MailFlowContactFromMailbox
             $GetDesiredProxyAddressesParams.AddressesToAdd = $AddressesToRemove
         }
         $message = "Get Desired ProxyAddresses for Identity ($Identity)"
-        Try 
+        Try
         {
             Write-Log -Message $message -EntryType Attempting
             $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
@@ -4055,7 +4079,7 @@ Function New-MailFlowContactFromMailbox
             {
                 $MyError = $_
                 Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog 
+                Write-Log -Message $myerror.tostring() -ErrorLog
                 Throw $MyError
             }
             $message = "Get New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)"
