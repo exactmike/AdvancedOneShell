@@ -302,6 +302,7 @@ function New-ResourceMailboxIntermediateObject
                 Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
+            #need to update this code to propery specify an dconvert objects
             $message = "Check $FriendlyIdentity RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
             Write-Log -Message $message -EntryType Notification
             $RecipientTypeDetails = Get-RecipientType -msExchRecipientTypeDetails $r.msExchRecipientTypeDetails
