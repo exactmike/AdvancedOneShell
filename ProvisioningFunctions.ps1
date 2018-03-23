@@ -302,7 +302,7 @@ function New-ResourceMailboxIntermediateObject
                 Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
-            #need to update this code to propery specify an dconvert objects
+            #need to update this code to propery specify and convert objects
             $message = "Check $FriendlyIdentity RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
             Write-Log -Message $message -EntryType Notification
             $RecipientTypeDetails = Get-RecipientType -msExchRecipientTypeDetails $r.msExchRecipientTypeDetails
@@ -329,7 +329,7 @@ function New-ResourceMailboxIntermediateObject
                 c = 'US'
                 co = 'United States'
                 extensionattribute5 = $r.ObjectGuid.Guid
-                msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
+                #msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
                 #msExchMailboxGUID = $($r.ExchangeGuid)
                 Mail = $DesiredNewProxyAddress
                 TargetAddress = 'SMTP:' + $DesiredTargetAddress
