@@ -318,53 +318,13 @@ function New-ResourceMailboxIntermediateObject
                 Write-Log -Message $message -EntryType Notification
                 $RTD = $RecipientTypeDetails
             }
-            $message = "Get msExchRecipientDisplayType to use for $FriendlyIdentity"
-            try
-            {
-                Write-Log -Message $message -EntryType Attempting
-                $msExchRecipientDisplayType = Get-msExchRecipientDisplayTypeValue -RecipientTypeDetails $RTD -ErrorAction Stop
-                Write-Log -Message $message -EntryType Succeeded -Verbose
-            }
-            catch
-            {
-                $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
-                continue nextResource
-            }
-            $message = "Get msExchRecipientTypeDetails to use for $FriendlyIdentity"
-            try
-            {
-                $msExchRecipientTypeDetails = Get-msExchRecipientTypeDetailsValue -RecipientTypeDetails $RTD -ErrorAction Stop
-                Write-Log -Message $message -EntryType Succeeded -Verbose
-            }
-            catch
-            {
-                $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
-                continue nextResource
-            }
-            $message = "Get msExchRemoteRecipientType to use for $FriendlyIdentity"
-            try
-            {
-                $msExchRemoteRecipientType = Get-msExchRemoteRecipientTypeValue -RecipientTypeDetails $RTD -ErrorAction Stop
-                Write-Log -Message $message -EntryType Succeeded -Verbose
-            }
-            catch
-            {
-                $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
-                continue nextResource
-            }
             $message = "Build Intermediate Object to use for creation of target object for $FriendlyIdentity"
             Write-Log -Message $message -EntryType Notification
             $SAMLength = [math]::Min($desiredAlias.length,20)
             $IntermediateObject=[pscustomobject]@{
-                msExchRecipientDisplayType = $msExchRecipientDisplayType
-                msExchRecipientTypeDetails = $msExchRecipientTypeDetails
-                msExchVersion = 44220983382016
+                msExchRecipientDisplayType = $null
+                msExchRecipientTypeDetails = $null
+                msExchVersion = 88218628259840
                 msExchUsageLocation = 'US'
                 c = 'US'
                 co = 'United States'
