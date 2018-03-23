@@ -306,17 +306,17 @@ function New-ResourceMailboxIntermediateObject
             $message = "Check $FriendlyIdentity RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
             Write-Log -Message $message -EntryType Notification
             $RecipientTypeDetails = Get-RecipientType -msExchRecipientTypeDetails $r.msExchRecipientTypeDetails
-            if ($RecipientTypeDetails -eq 'UserMailbox')
+            if ($RecipientTypeDetails.Name -like '*User*')
             {
                 $message = "Convert $FriendlyIdentity to SharedMailbox from $RecipienttypeDetails"
                 Write-Log -Message $message -EntryType Notification
-                $RTD = 'SharedMailbox'
+                $RTD = 'RemoteSharedMailbox'
             }
             else
             {
                 $message = "Preserve $FriendlyIdentity as $RecipientTypeDetails"
                 Write-Log -Message $message -EntryType Notification
-                $RTD = $RecipientTypeDetails
+                $RTD = $RecipientTypeDetails.Name
             }
             $message = "Build Intermediate Object to use for creation of target object for $FriendlyIdentity"
             Write-Log -Message $message -EntryType Notification
