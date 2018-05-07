@@ -3138,8 +3138,7 @@ function Get-AllADRecipientObjects
 
         #Start Job to Get Groups
         $AllGroupsJob = Invoke-Command -session $ADSession -scriptblock {Get-ADGroup -ResultSetSize $using:ResultSetSize -Properties $using:ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
-        Wait-Job -Job $AllGroupsJob
-        $AllGroups = Receive-Job -Job $AllGroupsJob
+        $AllGroups = Receive-Job -Job $AllGroupsJob -Wait
 
         #Start Job to Get Contacts
         $AllContactsJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $using:ADContactAttributes -ResultSetSize $using:ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
@@ -3148,8 +3147,7 @@ function Get-AllADRecipientObjects
         $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
 
         #Wait on Contacts Job if needed
-        Wait-Job -Job $AllContactsJob
-        $AllContacts = Receive-Job -Job $AllContactsJob
+        $AllContacts = Receive-Job -Job $AllContactsJob -Wait
 
         #Start Job to Get Users
         $AllUsersJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADUser -ResultSetSize $using:ResultSetSize -Filter * -Properties $using:ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
@@ -3158,8 +3156,7 @@ function Get-AllADRecipientObjects
         $AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
         
         #Wait on Users Job if needed
-        Wait-Job -Job $AllUsersJob
-        $AllUsers = Receive-Job -Job $AllUsersJob
+        $AllUsers = Receive-Job -Job $AllUsersJob -Wait
 
         #Start Job to Get Public Folders
         $AllPublicFoldersJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $using:ResultSetSize -Properties $using:ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
@@ -3168,8 +3165,7 @@ function Get-AllADRecipientObjects
         $AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
         
         #Wait on Public Folders Job if needed
-        Wait-Job -Job $AllPublicFoldersJob
-        $AllPublicFolders = Receive-Job -Job $AllPublicFoldersJob
+        $AllPublicFolders = Receive-Job -Job $AllPublicFoldersJob -Wait
 
         #Process Public Folders
         $AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
