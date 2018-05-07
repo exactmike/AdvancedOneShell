@@ -3159,7 +3159,7 @@ function Get-AllADRecipientObjects
         
         #Wait on Users Job if needed
         Wait-Job -Job $AllUsersJob
-        $AllUsers = Receive-Job -Job $AllGroupsJob
+        $AllUsers = Receive-Job -Job $AllUsersJob
 
         #Start Job to Get Public Folders
         $AllPublicFoldersJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $using:ResultSetSize -Properties $using:ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
@@ -3179,7 +3179,7 @@ function Get-AllADRecipientObjects
 
         #output
         if ($Passthrough) {$AllMailEnabledADObjects}
-        if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
+        if ($ExportData) {Export-OneShellData -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
     }
 #end function Get-AllADRecipientObjects
 function Get-ADRecipientsWithConflictingProxyAddresses
