@@ -3201,7 +3201,7 @@ function Get-AllADRecipientObjects
         Write-Verbose -Message "Found $($AllMailEnabledADObjects.count) AD Objects that are Mail Enabled Recipients"
 
         #output
-        if ($Passthrough) {$AllMailEnabledADObjects}
+        if ($Passthru) {$AllMailEnabledADObjects}
         if ($ExportData) {Export-OneShellData -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
     }
 #end function Get-AllADRecipientObjects
