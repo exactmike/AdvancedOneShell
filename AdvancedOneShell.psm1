@@ -3124,23 +3124,60 @@ function Get-AllADRecipientObjects
             [AllowNull()]
             [int]$ResultSetSize = $null
             ,
-            [switch]$Passthrough
+            [bool]$Passthru = $true
             ,
             [switch]$ExportData
+            ,
+            [parameter(Mandatory)]
+            [System.Management.Automation.Runspaces.PSSession]$ADSession
         )
         $ADUserAttributes = Get-OneShellVariableValue -Name ADUserAttributes
         $ADGroupAttributesWMembership = Get-OneShellVariableValue -Name ADGroupAttributesWMembership
         $ADContactAttributes = Get-OneShellVariableValue -Name ADContactAttributes
         $ADPublicFolderAttributes = Get-OneShellVariableValue -Name ADPublicFolderAttributes
-        $AllGroups = Get-ADGroup -ResultSetSize $ResultSetSize -Properties $ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item
+
+        #Start Job to Get Groups
+        $AllGroupsJob = Invoke-Command -session $ADSession -scriptblock {Get-ADGroup -ResultSetSize $using:ResultSetSize -Properties $using:ADGroupAttributesWMembership -Filter * | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
+        Wait-Job -Job $AllGroupsJob
+        $AllGroups = Receive-Job -Job $AllGroupsJob
+
+        #Start Job to Get Contacts
+        $AllContactsJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $using:ADContactAttributes -ResultSetSize $using:ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
+        
+        #Process Groups
         $AllMailEnabledGroups = $AllGroups | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-        $AllContacts = Get-ADObject -Filter {objectclass -eq 'contact'} -Properties $ADContactAttributes -ResultSetSize $ResultSetSize | Select-Object -Property * -ExcludeProperty Property*,Item
+
+        #Wait on Contacts Job if needed
+        Wait-Job -Job $AllContactsJob
+        $AllContacts = Receive-Job -Job $AllContactsJob
+
+        #Start Job to Get Users
+        $AllUsersJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADUser -ResultSetSize $using:ResultSetSize -Filter * -Properties $using:ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
+        
+        #Process Contacts
         $AllMailEnabledContacts = $AllContacts | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-        $AllUsers = Get-ADUser -ResultSetSize $ResultSetSize -Filter * -Properties $ADUserAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
+        
+        #Wait on Users Job if needed
+        Wait-Job -Job $AllUsersJob
+        $AllUsers = Receive-Job -Job $AllGroupsJob
+
+        #Start Job to Get Public Folders
+        $AllPublicFoldersJob = Invoke-Command -Session $ADSession -ScriptBlock {Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $using:ResultSetSize -Properties $using:ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item} -AsJob
+
+        #Process Users
         $AllMailEnabledUsers = $AllUsers  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
-        $AllPublicFolders = Get-ADObject -Filter {objectclass -eq 'publicFolder'} -ResultSetSize $ResultSetSize -Properties $ADPublicFolderAttributes | Select-Object -Property * -ExcludeProperty Property*,Item
+        
+        #Wait on Public Folders Job if needed
+        Wait-Job -Job $AllPublicFoldersJob
+        $AllPublicFolders = Receive-Job -Job $AllPublicFoldersJob
+
+        #Process Public Folders
         $AllMailEnabledPublicFolders = $AllPublicFolders  | Where-Object -FilterScript {$_.legacyExchangeDN -ne $NULL -or $_.mailNickname -ne $NULL -or $_.proxyAddresses -ne $NULL}
+
+        #Combine objects for output
         $AllMailEnabledADObjects = $AllMailEnabledGroups + $AllMailEnabledContacts + $AllMailEnabledUsers + $AllMailEnabledPublicFolders
+
+        #output
         if ($Passthrough) {$AllMailEnabledADObjects}
         if ($ExportData) {Export-Data -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
     }
