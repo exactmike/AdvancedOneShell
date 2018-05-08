@@ -187,7 +187,7 @@ function New-ResourceMailboxIntermediateObject
             $message = "Get New Alias for $FriendlyIdentity"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $DesiredAlias = GetDesiredValueFromSourceObject -Formula $AliasFormula -InputObject $r
                 $GetDesiredTargetAliasParams = @{
                     SourceAlias = $DesiredAlias
@@ -197,34 +197,34 @@ function New-ResourceMailboxIntermediateObject
                     PrefixOnlyIfNecessary = $PrefixOnlyIfNecessary
                 }
                 $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
-                Write-Log -Message $message -EntryType Succeeded -Verbose
-                Write-Log -Message "New Alias for $FriendlyIdentity is $DesiredAlias" -EntryType Notification -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message "New Alias for $FriendlyIdentity is $DesiredAlias" -EntryType Notification -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
             $message = "Get New SMTP Proxy Address for $FriendlyIdentity"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $DesiredNewProxyAddress = Get-DesiredTargetPrimarySMTPAddress -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -DesiredAlias $DesiredAlias -TargetSMTPDomain $TargetSMTPDomain -Verbose -ErrorAction Stop
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
             $message = "Get All Desired Proxy Addresses for $FriendlyIdentity $($r.ExchangeGUID)"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $GetDesiredProxyAddressesParams = @{
                     DesiredOrCurrentAlias=$DesiredAlias
                     TargetDeliveryDomain=$TargetDeliveryDomain
@@ -245,19 +245,19 @@ function New-ResourceMailboxIntermediateObject
                 if ($DomainsToRemove.Count -gt 0) {$GetDesiredProxyAddressesParams.DomainsToRemove = $DomainsToRemove}
                 $DesiredAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
                 $DesiredTargetAddress = $DesiredAddresses | Where-Object -FilterScript {$_ -like "*@$TargetDeliveryDomain"} | ForEach-Object {$_.split(':')[1]}
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
             $message = "Check All Desired Proxy Addresses for $FriendlyIdentity for conflicts in target Exchange Organization"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $AnyConflicts = @(
                 foreach ($a in $DesiredAddresses)
                 {
@@ -267,7 +267,7 @@ function New-ResourceMailboxIntermediateObject
                         $result
                     }
                 })
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
                 if ($AnyConflicts.Count -gt 0)
                 {
                     $conflictingGUIDsString = $AnyConflicts -join '|'
@@ -277,8 +277,8 @@ function New-ResourceMailboxIntermediateObject
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
             $message = "Get Desired Name for $FriendlyIdentity"
@@ -293,33 +293,33 @@ function New-ResourceMailboxIntermediateObject
                     $GetDesiredTargetNameParams.NewPrefix = $NewPrefix
                 }
                 $DesiredName = Get-DesiredTargetName @GetDesiredTargetNameParams
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
             #need to update this code to propery specify and convert objects
             $message = "Check $FriendlyIdentity RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
-            Write-Log -Message $message -EntryType Notification
+            Write-OneShellLog -Message $message -EntryType Notification
             $RecipientTypeDetails = Get-RecipientType -msExchRecipientTypeDetails $r.msExchRecipientTypeDetails
             if ($RecipientTypeDetails.Name -like '*User*')
             {
                 $message = "Convert $FriendlyIdentity to SharedMailbox from $RecipienttypeDetails"
-                Write-Log -Message $message -EntryType Notification
+                Write-OneShellLog -Message $message -EntryType Notification
                 $RTD = 'RemoteSharedMailbox'
             }
             else
             {
                 $message = "Preserve $FriendlyIdentity as $RecipientTypeDetails"
-                Write-Log -Message $message -EntryType Notification
+                Write-OneShellLog -Message $message -EntryType Notification
                 $RTD = $RecipientTypeDetails.Name
             }
             $message = "Build Intermediate Object to use for creation of target object for $FriendlyIdentity"
-            Write-Log -Message $message -EntryType Notification
+            Write-OneShellLog -Message $message -EntryType Notification
             $SAMLength = [math]::Min($desiredAlias.length,20)
             $IntermediateObject=[pscustomobject]@{
                 msExchRecipientDisplayType = $null
@@ -341,6 +341,7 @@ function New-ResourceMailboxIntermediateObject
                 UserPrincipalName = $DesiredNewProxyAddress
                 employeeType = 'Resource'
                 description = "Resource: $RTD"
+                ResourceType = $RTD
             }
             Write-Output -InputObject $IntermediateObject
         }
@@ -355,41 +356,41 @@ function Publish-ResourceObjects
             $message = "Create AD User Object for $($I.UserPrincipalName) $($I.msExchMailboxGUID.guid)"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 Push-Location
                 Set-Location -Path $($targetActiveDirectory + ':\')
                 $IHash = Convert-ObjectToHashTable -InputObject $I -NoEmpty -Exclude SAMAccountName -ErrorAction Stop
                 $newADUser = New-ADUser -Path $targetUserOUDN -Server $targetDomain -Enabled:$false -OtherAttributes $IHash -Name $I.Name -ErrorAction Stop -SamAccountName $I.SamAccountName -PassThru #-WhatIf
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
                 Pop-Location
             }
             catch
             {
                 Pop-Location
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextI
             }
             $message = "Add New Proxy Address and New Alias to Exchange Alias and Proxy Address Test tables"
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $($i.mailNickName + '@' + $TargetSMTPDomain) -ObjectGUID $i.msExchMailboxGUID.Guid -ProxyAddressType SMTP
                 Add-ExchangeAliasToTestExchangeAlias -Alias $i.mailNickName -ObjectGUID $i.msExchMailboxGUID.Guid
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextI
             }
             $message = "Add TargetDeliveryAddress $($i.mailNickName + "@$TargetDeliveryDomain") to Source Object $($i.UserPrincipalName) $($i.msExchMailboxGUID) "
             try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $AddEmailAddressParams = @{
                     ExchangeOrganization=$SourceExchangeOrganization
                     Identity=$i.msExchMailboxGUID
@@ -397,13 +398,13 @@ function Publish-ResourceObjects
                     ErrorAction='Stop'
                 }
                 Add-EmailAddress @AddEmailAddressParams
-                Write-Log -Message $message -EntryType Succeeded -Verbose
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
             }
         }
     }
