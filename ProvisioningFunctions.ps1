@@ -27,7 +27,7 @@ function Get-DesiredTargetAlias
 
         )
         $Alias = $SourceAlias
-        $Alias = $Alias -replace '\s|[^1-9a-zA-Z_-]',''
+        $Alias = $Alias -replace '\s|[^.0-9a-zA-Z_-]|\.$',''
         switch ($PSCmdlet.ParameterSetName)
         {
             'ReplacePrefix'
@@ -149,10 +149,10 @@ function GetDesiredValueFromSourceObject
     }
 #end function GetDesiredValueFromSourceObject
 function New-ResourceMailboxIntermediateObject
-    {
-        [cmdletbinding()]
-        param
-        (
+{
+    [cmdletbinding()]
+    param
+    (
             [parameter(Mandatory)]
             [psobject[]]$Resource
             ,
@@ -180,7 +180,7 @@ function New-ResourceMailboxIntermediateObject
             [parameter()]
             [switch]$PreserveCurrentProxyAddresses
         )
-        $IntermediateObjects = @(
+    $IntermediateObjects = @(
         :nextResource foreach ($r in $Resource)
         {
             $FriendlyIdentity = $r.mail
@@ -322,13 +322,6 @@ function New-ResourceMailboxIntermediateObject
             Write-OneShellLog -Message $message -EntryType Notification
             $SAMLength = [math]::Min($desiredAlias.length,20)
             $IntermediateObject=[pscustomobject]@{
-                msExchRecipientDisplayType = $null
-                msExchRecipientTypeDetails = $null
-                msExchVersion = 88218628259840
-                msExchUsageLocation = 'US'
-                c = 'US'
-                co = 'United States'
-                extensionattribute5 = $r.ObjectGuid.Guid
                 #msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
                 #msExchMailboxGUID = $($r.ExchangeGuid)
                 Mail = $DesiredNewProxyAddress
@@ -339,15 +332,23 @@ function New-ResourceMailboxIntermediateObject
                 Name = $DesiredName
                 DisplayName = $DesiredName
                 UserPrincipalName = $DesiredNewProxyAddress
+                SourceIdentity = $FriendlyIdentity
                 employeeType = 'Resource'
                 description = "Resource: $RTD"
                 ResourceType = $RTD
+                msExchRecipientDisplayType = $null
+                msExchRecipientTypeDetails = $null
+                msExchVersion = 88218628259840
+                msExchUsageLocation = 'US'
+                c = 'US'
+                co = 'United States'
+                extensionattribute5 = $r.ObjectGuid.Guid
             }
             Write-Output -InputObject $IntermediateObject
         }
         )
-        Write-Output -InputObject $IntermediateObjects
-    }
+    Write-Output -InputObject $IntermediateObjects
+}
 #end function New-ResourceMailboxIntermediateObject
 function Publish-ResourceObjects
     {
