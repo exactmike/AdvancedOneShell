@@ -3202,7 +3202,7 @@ function Get-AllADRecipientObjects
 
         #output
         if ($Passthru) {$AllMailEnabledADObjects}
-        if ($ExportData) {Export-OneShellData -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType xml}
+        if ($ExportData) {Export-OneShellData -DataToExport $AllMailEnabledADObjects -DataToExportTitle 'AllADRecipientObjects' -Depth 3 -DataType clixml}
     }
 #end function Get-AllADRecipientObjects
 function Get-ADRecipientsWithConflictingProxyAddresses
