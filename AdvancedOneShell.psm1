@@ -208,7 +208,7 @@ function Get-DesiredProxyAddresses
                 {}
                 else
                 {
-                    Write-Log -Message "SMTP Proxy Address $spa appears to be invalid." -ErrorLog -EntryType Failed
+                    Write-OneShellLog -Message "SMTP Proxy Address $spa appears to be invalid." -ErrorLog -EntryType Failed
                     $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -ne $spa}
                 }
             }
@@ -258,7 +258,7 @@ Function Export-FailureRecord
         $Global:SEATO_Exceptions += $ExceptionObject
         }
         catch {
-        Write-Log -Message "FAILED: to write Exception Record for $identity with Exception Code $ExceptionCode and Failure Group $FailureGroup" -ErrorLog
+        Write-OneShellLog -Message "FAILED: to write Exception Record for $identity with Exception Code $ExceptionCode and Failure Group $FailureGroup" -ErrorLog
         }
     }
 #end Function Export-FailureRecord
@@ -275,23 +275,23 @@ function Move-StagedADObjectToOperationalOU
             foreach ($I in $Identity) {
                 try {
                     $message = "Find AD Object: $I"
-                    Write-Log -Message $message -EntryType Attempting
+                    Write-OneShellLog -Message $message -EntryType Attempting
                     $aduser = Get-ADObject -Identity $I -ErrorAction Stop
-                    Write-Log -Message $message -EntryType Succeeded
+                    Write-OneShellLog -Message $message -EntryType Succeeded
                 }#try
                 catch {
-                    Write-Log -Message $message -Verbose -EntryType Failed -ErrorLog
-                    Write-Log -Message $_.tostring() -ErrorLog
+                    Write-OneShellLog -Message $message -Verbose -EntryType Failed -ErrorLog
+                    Write-OneShellLog -Message $_.tostring() -ErrorLog
                 }#catch
                 try {
                     $message = "Move-ADObject -Identity $I -TargetPath $DestinationOU"
-                    Write-Log -Message $message -EntryType Attempting
+                    Write-OneShellLog -Message $message -EntryType Attempting
                     $aduser | Move-ADObject -TargetPath $DestinationOU -ErrorAction Stop
-                    Write-Log -Message $message -EntryType Succeeded
+                    Write-OneShellLog -Message $message -EntryType Succeeded
                 }#try
                 catch {
-                    Write-Log -Message $message -Verbose -ErrorLog -EntryType Failed
-                    Write-Log -Message $_.tostring() -ErrorLog
+                    Write-OneShellLog -Message $message -Verbose -ErrorLog -EntryType Failed
+                    Write-OneShellLog -Message $_.tostring() -ErrorLog
                 }#catch
             }#foreach
         }
@@ -349,7 +349,7 @@ function Update-PostMigrationMailboxUser
                         $RecordCount = $Identity.count
                     }#if
                     else {
-                        Write-Log -Message "FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute." -Verbose -ErrorLog
+                        Write-OneShellLog -Message "FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute." -Verbose -ErrorLog
                         throw("FAILED: InputList does not contain the Target Lookup Attribute $TargetLookupAttribute.")
                     }#else
                 }#InputList
@@ -376,19 +376,19 @@ function Update-PostMigrationMailboxUser
                 #Lookup Target AD User
                 ################################################################################################################################################################
                     try {
-                        Write-Log -Message "Attempting: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
+                        Write-OneShellLog -Message "Attempting: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
                         $TADU = @(Find-Aduser -Identity $ID -IdentityType $TargetLookupAttribute -ADInstance $TargetAD -ErrorAction Stop)
-                        Write-Log -Message "Succeeded: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
+                        Write-OneShellLog -Message "Succeeded: Find AD User $ID in Target AD Forest $TargetAD" -Verbose
                     }#try
                     catch {
-                        Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD" -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD" -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserNotFound'}}
                         Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD not found.")
                     }#catch
                     if ($TADU.count -gt 1) {#check for ambiguous results
-                        Write-Log -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD returned multiple objects/ambiguous results." -Verbose -ErrorLog
+                        Write-OneShellLog -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD returned multiple objects/ambiguous results." -Verbose -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserAmbiguous'}}
                         Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD was ambiguous.")
@@ -396,7 +396,7 @@ function Update-PostMigrationMailboxUser
                     else {
                         $TADU = $TADU[0]
                         $TADUGUID = $TADU.objectguid
-                        Write-Log -Message "NOTE: Target AD User in $TargetAD Identified with ObjectGUID: $TADUGUID" -Verbose
+                        Write-OneShellLog -Message "NOTE: Target AD User in $TargetAD Identified with ObjectGUID: $TADUGUID" -Verbose
                     }
                     ################################################################################################################################################################
                     #Lookup Matching Source AD User
@@ -406,31 +406,31 @@ function Update-PostMigrationMailboxUser
                     $SADU = @()
                     foreach ($ad in $SourceAD) {
                         try {
-                            Write-Log -message "Attempting: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
+                            Write-OneShellLog -message "Attempting: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $SADU += Find-Aduser -Identity $($TADU.$SourceLookupAttribute) -IdentityType $SourceLookupAttribute -ADInstance $ad -ErrorAction Stop
-                            Write-Log -message "Succeeded: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
+                            Write-OneShellLog -message "Succeeded: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose
                         }#try
                         catch {
-                            Write-Log -message "FAILED: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose -ErrorLog
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message "FAILED: Find Matching User for $ID in Source AD $ad by Lookup Attribute $SourceLookupAttribute" -Verbose -ErrorLog
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                         }
                     }#foreach
                     #check for no results or ambiguous results
                     switch ($SADU.count) {
                         1 {
-                            Write-Log -message "Succeeded: Found exactly 1 Matching User for $ID in $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                            Write-OneShellLog -message "Succeeded: Found exactly 1 Matching User for $ID in $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $SADU = $SADU[0]
                             $SADUGUID = $SADU.objectguid
-                            Write-Log -Message "NOTE: Source AD User Identified in with ObjectGUID: $SADUGUID" -Verbose
+                            Write-OneShellLog -Message "NOTE: Source AD User Identified in with ObjectGUID: $SADUGUID" -Verbose
                         }#1
                         0 {
-                            Write-Log -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                            Write-OneShellLog -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
                             Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                             throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
                         }#0
                         Default {
-                            Write-Log -message "FAILED: Found multiple ambiguous matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
+                            Write-OneShellLog -message "FAILED: Found multiple ambiguous matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserAmbiguous'}}
                             Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                             throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') was ambiguous.")
@@ -442,14 +442,14 @@ function Update-PostMigrationMailboxUser
                     $writeProgressParams.status = "Calculate Proxy Address and Target Address Changes"
                     Write-Progress @writeProgressParams
                     try {
-                        Write-Log -Message "Attempting: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose
+                        Write-OneShellLog -Message "Attempting: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose
                         $TargetDeliveryDomainAddress = ($TADU.proxyaddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]
-                        Write-Log -Message "Succeeded: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID : $TargetDeliveryDomainAddress" -Verbose
+                        Write-OneShellLog -Message "Succeeded: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID : $TargetDeliveryDomainAddress" -Verbose
                     }#try
                     catch {
-                        Write-Log -Message "FAILED: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
-                        Write-Log -Message "NOTE: $TargetDeliveryDomain SMTP Proxy Address for Target AD User $TADUGUID will be added." -Verbose -ErrorLog
+                        Write-OneShellLog -Message "FAILED: Find Current proxy $TargetDeliveryDomain SMTP Address for Target AD User $TADUGUID" -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -Message "NOTE: $TargetDeliveryDomain SMTP Proxy Address for Target AD User $TADUGUID will be added." -Verbose -ErrorLog
                         $AddTargetDeliveryProxyAddress = $true
                     }#catch
                     #setup for get-desiredproxyaddresses function to calculate updated addresses
@@ -463,7 +463,7 @@ function Update-PostMigrationMailboxUser
                     $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
                     if ($AddTargetDeliveryProxyAddress) {$TargetDeliveryDomainAddress = ($DesiredProxyAddresses | Where-Object {$_ -like "smtp:*@$TargetDeliveryDomain"} | Select-Object -First 1).split(':')[1]}
                     #preparation activities complete, time to write changes to Target AD
-                    Write-Log -message "Using AD Cmdlets to set attributes for $TADUGUID in $TargetAD" -Verbose
+                    Write-OneShellLog -message "Using AD Cmdlets to set attributes for $TADUGUID in $TargetAD" -Verbose
                     $writeProgressParams.status = "Updating Attributes for $TADUGUID in $TargetAD using AD Cmdlets"
                     Write-Progress @writeProgressParams
                     #ClearTargetAttributes
@@ -474,13 +474,13 @@ function Update-PostMigrationMailboxUser
                         ErrorAction = 'Stop'
                     }#setaduserparams1
                     try {
-                        Write-Log -message "Attempting: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Attempting: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
                         set-aduser @setaduserparams1
-                        Write-Log -message "Succeeded: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Succeeded: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose
                     }#try
                     catch {
-                        Write-Log -message "FAILED: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -message "FAILED: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToClearTargetAttributes'}}
                         Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
@@ -500,13 +500,13 @@ function Update-PostMigrationMailboxUser
                     }#setaduserparams2
                     if ($TADU.c) {$setaduserparams1.msExchangeUsageLocation = $TADU.c}
                     try {
-                        Write-Log -message "Attempting: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Attempting: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
                         set-aduser @setaduserparams2
-                        Write-Log -message "Succeeded: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Succeeded: SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD" -Verbose
                     }#try
                     catch {
-                        Write-Log -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $ID in $TargetAD" -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $ID in $TargetAD" -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToSetTargetAttributes'}}
                         Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
@@ -521,13 +521,13 @@ function Update-PostMigrationMailboxUser
                         ErrorAction = 'Stop'
                     }#EnableADAccountParams
                     try {
-                        Write-Log -message "Attempting: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Attempting: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
                         Enable-ADAccount @EnableADAccountParams
-                        Write-Log -message "Succeeded: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Succeeded: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose
                     }#try
                     catch {
-                        Write-Log -message "FAILED: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -message "FAILED: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToEnableAccount'}}
                         Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
@@ -544,24 +544,24 @@ function Update-PostMigrationMailboxUser
                     until ($Recipient.count -ge 1 -or $count -ge 15)
                     #now that we found the object as a recipient, go ahead and run Update-Recipient against the object
                     try {
-                        Write-Log -message "Attempting: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
+                        Write-OneShellLog -message "Attempting: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
                         $Global:ErrorActionPreference = 'Stop'
                         Connect-Exchange -ExchangeOrganization $TargetExchangeOrg
                         Invoke-ExchangeCommand -cmdlet Update-Recipient -ExchangeOrganization $TargetExchangeOrg -string "-Identity $TADUGUID -ErrorAction Stop"
                         $Global:ErrorActionPreference = 'Continue'
-                        Write-Log -message "Succeeded: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
+                        Write-OneShellLog -message "Succeeded: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose
                     }
                     catch {
                         $Global:ErrorActionPreference = 'Continue'
-                        Write-Log -message "FAILED: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose -ErrorLog
-                        Write-Log -message $_.tostring() -ErrorLog
+                        Write-OneShellLog -message "FAILED: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose -ErrorLog
+                        Write-OneShellLog -message $_.tostring() -ErrorLog
                         $Global:Exceptions += $DesiredUPNAndPrimarySMTPAddress | Select-Object *,@{n='Exception';e={'FailedToUpdateRecipient'}}
                         Export-Data -DataToExportTitle TargetForestExceptionsUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to Update Recipient for $TADUGUID in $TargetExchangeOrg")
                     }
                     $ProcessedUser = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,@{n='UserPrincipalname';e={$DesiredUPNAndPrimarySMTPAddress}},@{n='ObjectGUID';e={$TADUGUID}}
                     $Global:ProcessedUsers += $ProcessedUser
-                    Write-Log -Message "NOTE: Processing for $DesiredUPNAndPrimarySMTPAddress with GUID $TADUGUID in $TargetAD and $TargetExchangeOrg has completed successfully." -Verbose
+                    Write-OneShellLog -Message "NOTE: Processing for $DesiredUPNAndPrimarySMTPAddress with GUID $TADUGUID in $TargetAD and $TargetExchangeOrg has completed successfully." -Verbose
                 Export-Data -DataToExportTitle PostMailboxMigrationProcessedUsers -DataToExport $ProcessedUser -DataType csv -Append
             }#try
             catch {
@@ -571,10 +571,10 @@ function Update-PostMigrationMailboxUser
         }#process
         end{
         if ($Global:ProcessedUsers.count -ge 1) {
-            Write-Log -Message "Successfully Processed $($Global:ProcessedUsers.count) Users." -Verbose
+            Write-OneShellLog -Message "Successfully Processed $($Global:ProcessedUsers.count) Users." -Verbose
         }
         if ($Global:Exceptions.count -ge 1) {
-            Write-Log -Message "Processed $($Global:Exceptions.count) Users with Exceptions." -Verbose
+            Write-OneShellLog -Message "Processed $($Global:Exceptions.count) Users with Exceptions." -Verbose
         }
         }#end
     }
@@ -639,23 +639,23 @@ function Add-MSOLLicenseToUser
             'Custom Source Data' {
                 #Validate Custom Source
                 $CustomSourceColumns = $CustomSource | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
-                Write-Log -verbose -message "Custom Source Columns are $CustomSourceColumns." -logpath $logpath
+                Write-OneShellLog -verbose -message "Custom Source Columns are $CustomSourceColumns." -logpath $logpath
                 $RequiredColumns = @('UserPrincipalName','LicenseTypeDesired')
-                Write-Log -verbose -message "Required Columns are $RequiredColumns." -logpath $logpath
+                Write-OneShellLog -verbose -message "Required Columns are $RequiredColumns." -logpath $logpath
                 $proceed = $true
                 foreach ($reqcol in $RequiredColumns) {
                     if ($reqcol -notin $CustomSourceColumns) {
                         $Proceed = $false
-                        Write-Log -errorlog -verbose -message "Required Column $reqcol is not found in the Custom Source data provided.  Processing cannot proceed." -logpath $logpath -errorlogpath $errorlogpath
+                        Write-OneShellLog -errorlog -verbose -message "Required Column $reqcol is not found in the Custom Source data provided.  Processing cannot proceed." -logpath $logpath -errorlogpath $errorlogpath
                     }
                 }
                 if ($Proceed) {
                     $UsersToLicense = $CustomSource
-                    Write-Log -verbose -message "Custom Source Data Columns Validated." -logpath $logpath
+                    Write-OneShellLog -verbose -message "Custom Source Data Columns Validated." -logpath $logpath
                 }
                 else {
                     $UsersToLicense = $null
-                    Write-Log -errorlog -verbose -message "ERROR: Custom Source Data Colums failed validation.  Processing cannot proceed." -logpath $logpath -errorlogpath $errorlogpath
+                    Write-OneShellLog -errorlog -verbose -message "ERROR: Custom Source Data Colums failed validation.  Processing cannot proceed." -logpath $logpath -errorlogpath $errorlogpath
                 }
             }
             'Single User' {
@@ -711,12 +711,12 @@ function Add-MSOLLicenseToUser
                             }
                         }
                         if ($DisabledPlans.Count -gt 0) {
-                            Write-Log -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
+                            Write-OneShellLog -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
                             $msollicenseoptionsparams.DisabledPlans = $DisabledPlans
                         }
                     }
                     else {$msollicenseoptionsparams.DisabledPlans = $Null}
-                    Write-Log -Message "Desired E4 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Desired E4 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                     #Create License Options Object
                     $LicenseOptions = New-MsolLicenseOptions @msollicenseoptionsparams
                     $Proceed = $true
@@ -737,12 +737,12 @@ function Add-MSOLLicenseToUser
                             }
                         }
                         if ($DisabledPlans.Count -gt 0) {
-                            Write-Log -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
+                            Write-OneShellLog -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
                             $msollicenseoptionsparams.DisabledPlans = $DisabledPlans
                         }
                     }
                     else {$msollicenseoptionsparams.DisabledPlans = $Null}
-                    Write-Log -Message "Desired E3 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Desired E3 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                     #Create License Options Object
                     $LicenseOptions = New-MsolLicenseOptions @msollicenseoptionsparams
                     $Proceed = $true
@@ -761,12 +761,12 @@ function Add-MSOLLicenseToUser
                             }
                         }
                         if ($DisabledPlans.Count -gt 0) {
-                            Write-Log -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
+                            Write-OneShellLog -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
                             $msollicenseoptionsparams.DisabledPlans = $DisabledPlans
                         }
                     }
                     else {$msollicenseoptionsparams.DisabledPlans = $Null}
-                    Write-Log -Message "Desired E2 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Desired E2 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                     #Create License Options Object
                     $LicenseOptions = New-MsolLicenseOptions @msollicenseoptionsparams
 
@@ -785,12 +785,12 @@ function Add-MSOLLicenseToUser
                             }
                         }
                         if ($DisabledPlans.Count -gt 0) {
-                            Write-Log -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
+                            Write-OneShellLog -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
                             $msollicenseoptionsparams.DisabledPlans = $DisabledPlans
                         }
                     }
                     else {$msollicenseoptionsparams.DisabledPlans = $Null}
-                    Write-Log -Message "Desired E1 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Desired E1 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                     #Create License Options Object
                     $LicenseOptions = New-MsolLicenseOptions @msollicenseoptionsparams
 
@@ -808,19 +808,19 @@ function Add-MSOLLicenseToUser
                             }
                         }
                         if ($DisabledPlans.Count -gt 0) {
-                            Write-Log -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
+                            Write-OneShellLog -verbose -message "Desired Disabled Plans have been calculated as follows: $DisabledPlans" -LogPath $LogPath
                             $msollicenseoptionsparams.DisabledPlans = $DisabledPlans
                         }
                     }
                     else {$msollicenseoptionsparams.DisabledPlans = $Null}
-                    Write-Log -Message "Desired K1 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Desired K1 License and License Options Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                     #Create License Options Object
                     $LicenseOptions = New-MsolLicenseOptions @msollicenseoptionsparams
                     $Proceed = $true
                 }
                 Default {
                     $Proceed = $false
-                    Write-Log -Message "No License Desired (non E4,E3,E2,E1,K1) Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "No License Desired (non E4,E3,E2,E1,K1) Determined for $CurrentADUPN." -Verbose -LogPath $LogPath
                 }
             }
             #Lookup MSOL User Object
@@ -828,16 +828,16 @@ function Add-MSOLLicenseToUser
                 $WriteProgressParams.CurrentOperation = "Looking up MSOL User Object."
                 Write-Progress @WriteProgressParams
                 Try {
-                    Write-Log -Message "Looking up MSOL User Object $CurrentAzureUPN for AD User Object $CurrentADUPN" -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Looking up MSOL User Object $CurrentAzureUPN for AD User Object $CurrentADUPN" -Verbose -LogPath $LogPath
                     $CurrentMSOLUser = Get-MsolUser -UserPrincipalName $CurrentAzureUPN -ErrorAction Stop
-                    Write-Log -Message "Found MSOL User for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "Found MSOL User for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                     $Proceed = $true
                 }
                 Catch {
                     $Proceed = $false
-                    Write-Log -Message "ERROR: MSOL User for $CurrentAzureUPN not found." -Verbose -LogPath $LogPath
-                    Write-Log -Message "ERROR: MSOL User for $CurrentAzureUPN not found." -LogPath $ErrorLogPath
-                    Write-Log -Message $_.tostring() -LogPath $ErrorLogPath
+                    Write-OneShellLog -Message "ERROR: MSOL User for $CurrentAzureUPN not found." -Verbose -LogPath $LogPath
+                    Write-OneShellLog -Message "ERROR: MSOL User for $CurrentAzureUPN not found." -LogPath $ErrorLogPath
+                    Write-OneShellLog -Message $_.tostring() -LogPath $ErrorLogPath
                 }
             }
 
@@ -864,7 +864,7 @@ function Add-MSOLLicenseToUser
                         }
                     }
                     Default {
-                        Write-Log -Message "Usage Location for MSOL User $CurrentAzureUPN is set to $($CurrentMSOLUser.UsageLocation)." -LogPath $LogPath -Verbose
+                        Write-OneShellLog -Message "Usage Location for MSOL User $CurrentAzureUPN is set to $($CurrentMSOLUser.UsageLocation)." -LogPath $LogPath -Verbose
                         $Proceed = $true
                     }
 
@@ -876,13 +876,13 @@ function Add-MSOLLicenseToUser
             Write-Progress @WriteProgressParams
             #Correct License Already Applied?
             if ($CurrentMSOLUser.IsLicensed) {$LicenseAssigned = $true} else {$LicenseAssigned = $false}
-            Write-Log -Message "$CurrentADUPN license assignment status = $LicenseAssigned" -Verbose -LogPath $LogPath
+            Write-OneShellLog -Message "$CurrentADUPN license assignment status = $LicenseAssigned" -Verbose -LogPath $LogPath
             if ($CurrentMSOLUser.Licenses.AccountSkuId -contains $DesiredLicense) {$CorrectLicenseType = $True}
             else {
                 $CorrectLicenseType = $false
                 $LicenseToReplace = $CurrentMSOLUser.Licenses.AccountSkuID | where-object {$_ -in ($InterchangeableLicenses)}
             }
-            Write-Log -Message "$CurrentADUPN correct license applied status = $CorrectLicenseType" -Verbose -LogPath $LogPath
+            Write-OneShellLog -Message "$CurrentADUPN correct license applied status = $CorrectLicenseType" -Verbose -LogPath $LogPath
 
             #Correct License Options Already Applied?
             if (-not $CorrectLicenseType) {$correctLicenseOptions = $false}
@@ -895,7 +895,7 @@ function Add-MSOLLicenseToUser
                 if ($unintendedDisabledPlans.count -gt 0 -or $unintendedEnabledPlans.Count -gt 0) {$correctLicenseOptions = $false}
                 else {$correctLicenseOptions = $true}
             }
-            Write-Log -Message "$CurrentADUPN correct license options applied status = $correctLicenseOptions" -Verbose -LogPath $LogPath
+            Write-OneShellLog -Message "$CurrentADUPN correct license options applied status = $correctLicenseOptions" -Verbose -LogPath $LogPath
             #Set Operation To Process on User
             $MSOLUserLicenseParams = @{}
             $MSOLUserLicenseParams.ErrorAction = 'Stop'
@@ -906,24 +906,24 @@ function Add-MSOLLicenseToUser
             if ($LicenseAssigned -and -not $CorrectLicenseType) {$LicenseOperation = 'Replace'}
 
 
-            Write-Log -Message "$CurrentADUPN license operation selected = $LicenseOperation" -Verbose -LogPath $LogPath
+            Write-OneShellLog -Message "$CurrentADUPN license operation selected = $LicenseOperation" -Verbose -LogPath $LogPath
 
             #Process License Operation
             switch ($LicenseOperation) {
-                'None' {Write-Log -Message "$CurrentAzureUPN is already correctly licensed." -Verbose -LogPath $LogPath
+                'None' {Write-OneShellLog -Message "$CurrentAzureUPN is already correctly licensed." -Verbose -LogPath $LogPath
                 }
                 'Assign'{
                     Try {
                         $MSOLUserLicenseParams.AddLicenses = $DesiredLicense
                         $MSOLUserLicenseParams.LicenseOptions = $LicenseOptions
-                        Write-Log -Message "Setting User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Setting User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                         Set-MsolUserLicense @MSOLUserLicenseParams
-                        Write-Log -Message "Success: Assigned User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Success: Assigned User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                     }
                     Catch {
-                        Write-Log -Message "ERROR: License could not be assigned for $CurrentAzureUPN" -Verbose -LogPath $LogPath
-                        Write-Log -Message "ERROR: License could not be assigned for $CurrentAzureUPN" -LogPath $ErrorLogPath
-                        Write-Log -Message $_.tostring() -Verbose -errorlogpath $ErrorLogPath
+                        Write-OneShellLog -Message "ERROR: License could not be assigned for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "ERROR: License could not be assigned for $CurrentAzureUPN" -LogPath $ErrorLogPath
+                        Write-OneShellLog -Message $_.tostring() -Verbose -errorlogpath $ErrorLogPath
                     }
                 }
                 'Replace' {
@@ -931,28 +931,28 @@ function Add-MSOLLicenseToUser
                         $MSOLUserLicenseParams.AddLicenses = $DesiredLicense
                         $MSOLUserLicenseParams.LicenseOptions = $LicenseOptions
                         $MSOLUserLicenseParams.RemoveLicenses = $LicenseToReplace
-                        Write-Log -Message "Replacing User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Replacing User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                         Set-MsolUserLicense @MSOLUserLicenseParams
-                        Write-Log -Message "Success: Replaced User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Success: Replaced User License for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                     }
                     Catch {
-                        Write-Log -Message "ERROR: License could not be replaced for $CurrentAzureUPN" -Verbose -LogPath $LogPath
-                        Write-Log -Message "ERROR: License could not be replaced for $CurrentAzureUPN" -LogPath $ErrorLogPath
-                        Write-Log -Message $_.tostring() -Verbose -LogPath $ErrorLogPath
+                        Write-OneShellLog -Message "ERROR: License could not be replaced for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "ERROR: License could not be replaced for $CurrentAzureUPN" -LogPath $ErrorLogPath
+                        Write-OneShellLog -Message $_.tostring() -Verbose -LogPath $ErrorLogPath
                     }
                 }
                 'Options' {
                     Try {
                         #$MSOLUserLicenseParams.AddLicenses = $DesiredLicense
                         $MSOLUserLicenseParams.LicenseOptions = $LicenseOptions
-                        Write-Log -Message "Setting User License Options for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Setting User License Options for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                         Set-MsolUserLicense @MSOLUserLicenseParams
-                        Write-Log -Message "Success: Set User License Options for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "Success: Set User License Options for $CurrentAzureUPN" -Verbose -LogPath $LogPath
                     }
                     Catch {
-                        Write-Log -Message "ERROR: License options could not be set for $CurrentAzureUPN" -Verbose -LogPath $LogPath
-                        Write-Log -Message "ERROR: License options could not be set for $CurrentAzureUPN" -LogPath $ErrorLogPath
-                        Write-Log -Message $_.tostring() -Verbose -LogPath $ErrorLogPath
+                        Write-OneShellLog -Message "ERROR: License options could not be set for $CurrentAzureUPN" -Verbose -LogPath $LogPath
+                        Write-OneShellLog -Message "ERROR: License options could not be set for $CurrentAzureUPN" -LogPath $ErrorLogPath
+                        Write-OneShellLog -Message $_.tostring() -Verbose -LogPath $ErrorLogPath
                     }
                 }
             }
@@ -1014,15 +1014,15 @@ function Add-LicenseToMSOLUser
             try
             {
                 $message = "Build License Options Object"
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $LicenseOptions = New-MsolLicenseOptions @newLicenseOptionsParams
-                Write-Log -Message $message -EntryType Succeeded
+                Write-OneShellLog -Message $message -EntryType Succeeded
             }
             catch
             {
                 $myerror = $_
-                Write-Log -Message $message -EntryType Failed -Verbose
-                Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -Verbose
+                Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                 throw("Failed:$message")
             }
             $IdentityParameter = $PSCmdlet.ParameterSetName
@@ -1054,15 +1054,15 @@ function Add-LicenseToMSOLUser
                 {
                     $GetMSOLUserParams.$IdentityParameter = $ID.ToString()
                     $message = "Get MSOL User Object for $ID"
-                    Write-Log -Message $message -EntryType Attempting
+                    Write-OneShellLog -Message $message -EntryType Attempting
                     $MSOLUser = Get-MsolUser @GetMSOLUserParams
-                    Write-Log -Message $message -EntryType Succeeded
+                    Write-OneShellLog -Message $message -EntryType Succeeded
                 }
                 catch
                 {
                     $myerror = $_
-                    Write-Log -Message $message -EntryType Failed -Verbose
-                    Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                    Write-OneShellLog -Message $message -EntryType Failed -Verbose
+                    Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                     continue nextID
                 }
                 if ($CheckForExchangeOnlineRecipient -eq $true)
@@ -1074,15 +1074,15 @@ function Add-LicenseToMSOLUser
                     }
                     try
                     {
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         $EOLRecipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -ExchangeOrganization $psboundparameters['exchangeOrganization'] -splat $getRecipientParams -ErrorAction Stop
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
-                        Write-Log -Message $message -EntryType Failed -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                         continue nextID
                     }
                 }
@@ -1092,7 +1092,7 @@ function Add-LicenseToMSOLUser
                     if ($MSOLUser.UsageLocation -eq $null)
                     {
                         $message = "UsageLocation for $ID is current NULL"
-                        Write-Log -Message $message -EntryType Notification
+                        Write-OneShellLog -Message $message -EntryType Notification
                         $setMSOLUserParams = @{
                             ObjectID = $MSOLUser.ObjectID.guid
                             UsageLocation = $UsageLocation
@@ -1101,15 +1101,15 @@ function Add-LicenseToMSOLUser
                         $message = "Set UsageLocation for $ID to $UsageLocation"
                         try
                         {
-                            Write-Log -Message $message -EntryType Attempting
+                            Write-OneShellLog -Message $message -EntryType Attempting
                             Set-MsolUser @setMSOLUserParams
-                            Write-Log -Message $message -EntryType Succeeded
+                            Write-OneShellLog -Message $message -EntryType Succeeded
                         }
                         catch
                         {
                             $myerror = $_
-                            Write-Log -Message $message -EntryType Failed -ErrorLog
-                            Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                             continue nextID
                         }
                     }#if usage location is null
@@ -1122,15 +1122,15 @@ function Add-LicenseToMSOLUser
                     }
                     try
                     {
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         Set-MsolUserLicense @setMSOLUserLicenseParams
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
                         $myerror = $_
-                        Write-Log -Message $message -EntryType Failed -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                     }
                 }
             }
@@ -1334,30 +1334,30 @@ function Set-ExchangeAttributesOnTargetObject
                             $TrialSADU =
                             @(
                                 try {
-                                    Write-Log -message $writeProgressParams.currentoperation -EntryType Attempting
+                                    Write-OneShellLog -message $writeProgressParams.currentoperation -EntryType Attempting
                                     Find-ADUser -Identity $value -IdentityType $sourceLookupAttribute -AmbiguousAllowed -ActiveDirectoryInstance $SourceAD -ErrorAction Stop
-                                    Write-Log -message $writeProgressParams.currentoperation -EntryType Succeeded
+                                    Write-OneShellLog -message $writeProgressParams.currentoperation -EntryType Succeeded
                                 }#try
                                 catch {
-                                    Write-Log -message $writeProgressParams.currentoperation -Verbose -EntryType Failed -ErrorLog
-                                    Write-Log -Message $_.tostring() -ErrorLog
+                                    Write-OneShellLog -message $writeProgressParams.currentoperation -Verbose -EntryType Failed -ErrorLog
+                                    Write-OneShellLog -Message $_.tostring() -ErrorLog
                                     Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $value -RelatedObjectIdentifierType $SourceLookupAttribute
                                 }
                             )#TrialSADU
                             #Determine action based on the results of the lookup attempt in the target AD
                             switch ($TrialSADU.count) {
                                 1 {
-                                    Write-Log -message "Succeeded: Found exactly 1 Matching User with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD"
+                                    Write-OneShellLog -message "Succeeded: Found exactly 1 Matching User with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD"
                                     #output the object into $SourceData
                                     $TrialSADU[0]
-                                    Write-Log -Message "Source AD User Identified in with ObjectGUID: $($TrialSADU[0].objectguid)" -EntryType Notification
+                                    Write-OneShellLog -Message "Source AD User Identified in with ObjectGUID: $($TrialSADU[0].objectguid)" -EntryType Notification
                                 }#1
                                 0 {
-                                    Write-Log -message "FAILED: Found 0 Matching Users with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD" -Verbose
+                                    Write-OneShellLog -message "FAILED: Found 0 Matching Users with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD" -Verbose
                                     Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $ID -RelatedObjectIdentifierType $SourceLookupAttribute
                                 }#0
                                 Default {
-                                    Write-Log -message "FAILED: Found multiple ambiguous Matching Users with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD" -Verbose
+                                    Write-OneShellLog -message "FAILED: Found multiple ambiguous Matching Users with value $value in $SourceLookupAttribute in Source Object Forest $SourceAD" -Verbose
                                     Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $ID -RelatedObjectIdentifierType $SourceLookupAttribute
                                 }#Default
                             }#switch $SADU.count
@@ -1369,7 +1369,7 @@ function Set-ExchangeAttributesOnTargetObject
                     #validate attributes in SourceData?
                 }#SourceDataProvided
             }#switch $PSCmdlet.ParameterSetName
-            Write-Log -Message "Completed Source Object Lookup/Validation Operations" -EntryType Notification -Verbose
+            Write-OneShellLog -Message "Completed Source Object Lookup/Validation Operations" -EntryType Notification -Verbose
         }#process
         end
         {
@@ -1407,7 +1407,7 @@ function Set-ExchangeAttributesOnTargetObject
                     Write-Progress @writeProgressParams
                     try
                     {
-                        Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Attempting
+                        Write-OneShellLog -Message $writeProgressParams.CurrentOperation -EntryType Attempting
                         $TrialTADU =
                         @(
                             if (-not [string]::IsNullOrWhiteSpace($id))
@@ -1428,7 +1428,7 @@ function Set-ExchangeAttributesOnTargetObject
                                 $SurName = $SADU.Surname
                                 $message = "Attempting Secondary Attribute Lookup using GivenName: $givenName Surname: $SurName"
                                 $writeProgressParams.CurrentOperation = $message
-                                Write-log -Message $message -EntryType Notification
+                                Write-OneShellLog -Message $message -EntryType Notification
                                 $TrialTADU = @(Find-ADUser -GivenName $GivenName -SurName $SurName -IdentityType GivenNameSurname -AmbiguousAllowed -AD $TargetAD -ErrorAction Stop)
                                 $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                             }
@@ -1436,7 +1436,7 @@ function Set-ExchangeAttributesOnTargetObject
                             {
                                 $message = "Attempting Secondary Attribute Lookup using $secondaryID in $TargetLookupSecondaryAttribute"
                                 $writeProgressParams.CurrentOperation = $message
-                                Write-log -Message $message -EntryType Notification
+                                Write-OneShellLog -Message $message -EntryType Notification
                                 $TrialTADU = @(Find-Aduser -Identity $SecondaryID -IdentityType $TargetLookupSecondaryAttribute -AD $TargetAD -ErrorAction Stop -AmbiguousAllowed)
                                 $TrialTADU = @($TrialTADU | Where-Object {$_.ObjectGUID -ne $SADUGUID})
                             }
@@ -1445,12 +1445,12 @@ function Set-ExchangeAttributesOnTargetObject
                                 $TrialTADU | Add-Member -MemberType NoteProperty -Name MatchAttribute -Value $TargetLookupSecondaryAttribute
                             }
                         }#if
-                        Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Succeeded
+                        Write-OneShellLog -Message $writeProgressParams.CurrentOperation -EntryType Succeeded
                     }#try
                     catch
                     {
-                        Write-Log -Message $writeProgressParams.CurrentOperation -EntryType Failed -Verbose -ErrorLog
-                        Write-Log -Message $_.tostring() -ErrorLog
+                        Write-OneShellLog -Message $writeProgressParams.CurrentOperation -EntryType Failed -Verbose -ErrorLog
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                         Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                         continue nextID
                     }#catch
@@ -1461,28 +1461,28 @@ function Set-ExchangeAttributesOnTargetObject
                     {
                         1
                         {
-                            Write-Log -message "Succeeded: Found exactly 1 Matching User" -Verbose
+                            Write-OneShellLog -message "Succeeded: Found exactly 1 Matching User" -Verbose
                             $TADU = $TrialTADU[0]
                             $TADUGUID = $TADU.objectguid.guid
-                            Write-Log -Message "Target AD User Identified in $TargetAD with ObjectGUID: $TADUGUID" -Verbose -EntryType Notification
+                            Write-OneShellLog -Message "Target AD User Identified in $TargetAD with ObjectGUID: $TADUGUID" -Verbose -EntryType Notification
                         }#1
                         0
                         {
                             if ($SADU.enabled)
                             {
-                                Write-Log -Message "Found 0 Matching Users for User $ID, but Source User Object is Enabled." -Verbose -EntryType Notification
+                                Write-OneShellLog -Message "Found 0 Matching Users for User $ID, but Source User Object is Enabled." -Verbose -EntryType Notification
                                 $TADU = $SADU
                                 $TADUGUID = $SADUGUID
                             }
                             else {
-                                Write-Log -message "Found 0 Matching Users for User $ID" -Verbose -EntryType Failed
+                                Write-OneShellLog -message "Found 0 Matching Users for User $ID" -Verbose -EntryType Failed
                                 Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserNotFound' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                                 continue nextID
                             }
                         }#0
                         Default
                         {#check for ambiguous results
-                            Write-Log -Message "Find AD User returned multiple objects/ambiguous results for User $ID." -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -Message "Find AD User returned multiple objects/ambiguous results for User $ID." -Verbose -ErrorLog -EntryType Failed
                             Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserAmbiguous' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                             continue nextID
                         }
@@ -1510,7 +1510,7 @@ function Set-ExchangeAttributesOnTargetObject
                         }#try
                         catch
                         {
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity $ID -ExceptionCode 'SourceADUserPrimarySMTPNotFound' -FailureGroup NotProcessed
                             continue nextID
                         }#catch
@@ -1548,7 +1548,7 @@ function Set-ExchangeAttributesOnTargetObject
                         }#try
                         catch
                         {
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                             #Export-FailureRecord -Identity $ID -ExceptionCode 'TargetADUserPrimarySMTPNotFound' -FailureGroup NotProcessed
                             #continue nextID
                         }#catch
@@ -1571,20 +1571,20 @@ function Set-ExchangeAttributesOnTargetObject
                     {
                         try
                         {
-                            #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
+                            #Write-OneShellLog -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType ProxyAddress -AmbiguousAllowed -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
-                            #Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
+                            #Write-OneShellLog -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
                         catch
                         {
-                            Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
-                            Write-Log -message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
+                            Write-OneShellLog -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                             continue nextAddr
                         }#catch
                         If ($MailContact.count -ge 1)
                         {
-                            Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
+                            Write-OneShellLog -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
                             if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname)
                             {
                                 $MailContacts += $MailContact
@@ -1598,19 +1598,19 @@ function Set-ExchangeAttributesOnTargetObject
                         $addr = $SADU.targetaddress
                         try
                         {
-                            #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
+                            #Write-OneShellLog -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType ProxyAddress -AmbiguousAllowed -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
-                            #Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
+                            #Write-OneShellLog -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
                         catch
                         {
-                            Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
-                            Write-Log -message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
+                            Write-OneShellLog -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }#catch
                         If ($MailContact.count -ge 1)
                         {
-                            Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
+                            Write-OneShellLog -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
                             if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname) {
                                 $MailContacts += $MailContact
                                 $Global:SEATO_MailContactsFound += $MailContact
@@ -1623,19 +1623,19 @@ function Set-ExchangeAttributesOnTargetObject
                         $addr = $SADU.altRecipient
                         try
                         {
-                            #Write-Log -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
+                            #Write-OneShellLog -message "Find Mail Contact for $addr in $TargetAD" -EntryType Attempting
                             $MailContact = @(Find-ADContact -Identity $addr -IdentityType DistinguishedName -ActiveDirectoryInstance $TargetAD -ErrorAction Stop)
-                            Write-Log -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
+                            Write-OneShellLog -message "No Errors: Find Mail Contact for $addr in $TargetAD" -EntryType Succeeded
                         }#try
                         catch
                         {
-                            Write-Log -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
-                            Write-Log -message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message "Unexpected Error: Find Mail Contact for $addr in $TargetAD" -EntryType Failed -Verbose -ErrorLog
+                            Write-OneShellLog -message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity "$ID`:$addr" -ExceptionCode 'UnexpectedFailureDuringMailContactLookup' -FailureGroup ContactLookupFailure -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }#catch
                         If ($MailContact.count -ge 1)
                         {
-                            Write-Log -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
+                            Write-OneShellLog -Message "NOTE: A mail contact was found for $addr in $TargetAD." -Verbose
                             if ($MailContacts.distinguishedname -notcontains $MailContact.Distinguishedname)
                             {
                                 $MailContacts += $MailContact
@@ -1643,7 +1643,7 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                         }#if
                     }
-                    Write-Log -Message "A total of $($MailContacts.count) mail contacts were found for $ID in $TargetAD" -Verbose -EntryType Notification
+                    Write-OneShellLog -Message "A total of $($MailContacts.count) mail contacts were found for $ID in $TargetAD" -Verbose -EntryType Notification
                     #endregion FindContacts
                     #region BuildDesiredProxyAddresses
                     #First, check desired Alias and desired PrimarySMTPAddress for conflicts
@@ -1704,7 +1704,7 @@ function Set-ExchangeAttributesOnTargetObject
                     }
                     Until (($AliasPass -and $PrimarySMTPPass) -or $AliasAndPrimarySMTPAttemptCount -gt 3)
                     if ($AliasAndPrimarySMTPAttemptCount -gt 3) {
-                            Write-Log -message "Was not able to find a valid alias and/or PrimarySMTPAddress to Assign to the target: $ID" -Verbose -EntryType Failed
+                            Write-OneShellLog -message "Was not able to find a valid alias and/or PrimarySMTPAddress to Assign to the target: $ID" -Verbose -EntryType Failed
                             Export-FailureRecord -Identity $ID -ExceptionCode 'InvalidAliasOrPrimarySMTPAddress' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                             continue nextID
                     }
@@ -1806,7 +1806,7 @@ function Set-ExchangeAttributesOnTargetObject
                 $writeProgressParams.currentOperation = "Completing Intermediate Objects Operations"
                 Write-Progress @writeProgressParams -Completed
             )#IntermediateObjects
-            Write-Log -Message "$($IntermediateObjects.count) Object(s) Processed (Lookup of Source and Target Objects and Attribute Calculations)." -EntryType Notification
+            Write-OneShellLog -Message "$($IntermediateObjects.count) Object(s) Processed (Lookup of Source and Target Objects and Attribute Calculations)." -EntryType Notification
             #region CYABackup
             #depth must be 2 or greater to capture and restore MV attributes like proxy addresses correctly
             Export-Data -DataToExport $IntermediateObjects -DataToExportTitle IntermediateObjects -Depth 3 -DataType json
@@ -1900,7 +1900,7 @@ function Set-ExchangeAttributesOnTargetObject
                         'None'
                         {
                             Write-Output -InputObject $IntObj
-                            Write-Log -Message "Target Operation Could Not Be Determined for $SADUGUID" -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -Message "Target Operation Could Not Be Determined for $SADUGUID" -Verbose -ErrorLog -EntryType Failed
                             Export-FailureRecord -Identity $ID -ExceptionCode 'TargetOperationNotDetermined' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType 'ObjectGUID'
                             continue nextIntObj
                         }
@@ -1922,13 +1922,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
                             try {
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams1
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 Continue nextIntObj
                             }#catch
@@ -2001,13 +2001,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             try {
                                 $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams2
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $TADUGUID in $TargetAD" -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $TADUGUID in $TargetAD" -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 continue nextIntObj
                             }#catch
@@ -2044,13 +2044,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
                             try {
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams1
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 Continue nextIntObj
                             }#catch
@@ -2123,13 +2123,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             try {
                                 $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams2
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 continue nextIntObj
                             }#catch
@@ -2166,13 +2166,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
                             try {
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams1
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 Continue nextIntObj
                             }#catch
@@ -2245,13 +2245,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             try {
                                 $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams2
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 continue nextIntObj
                             }#catch
@@ -2288,13 +2288,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
                             try {
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams1
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 Continue nextIntObj
                             }#catch
@@ -2371,13 +2371,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             try {
                                 $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams2
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 continue nextIntObj
                             }#catch
@@ -2405,13 +2405,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             $message = "Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD"
                             try {
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams1
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode 'FailedToClearTargetAttributes' -FailureGroup NotProcessed -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 Continue nextIntObj
                             }#catch
@@ -2486,13 +2486,13 @@ function Set-ExchangeAttributesOnTargetObject
                             }
                             try {
                                 $message = "SET target attributes $($setaduserparams2.'Add'.keys -join ';') for $TADUGUID in $TargetAD"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 set-aduser @setaduserparams2
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $id -ExceptionCode 'FailedToSetTargetAttributes' -FailureGroup PartiallyProcessed -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                                 continue nextIntObj
                             }#catch
@@ -2519,13 +2519,13 @@ function Set-ExchangeAttributesOnTargetObject
                                     $message = "Add $TADUGUID to group $groupDN"
                                     $GroupObject = Get-ADGroup -Identity $groupDN -Properties CanonicalName
                                     $Domain = Get-ADObjectDomain -adobject $GroupObject
-                                    Write-Log -message $message -EntryType Attempting
+                                    Write-OneShellLog -message $message -EntryType Attempting
                                     Add-ADGroupMember -Identity $groupDN -Members $TADUGUID -ErrorAction Stop -Confirm:$false -Server $Domain
-                                    Write-Log -message $message -EntryType Succeeded
+                                    Write-OneShellLog -message $message -EntryType Succeeded
                                 }#try
                                 catch {
-                                    Write-Log -message $message -EntryType Failed -Verbose -ErrorLog
-                                    Write-Log -Message $_.tostring() -ErrorLog
+                                    Write-OneShellLog -message $message -EntryType Failed -Verbose -ErrorLog
+                                    Write-OneShellLog -Message $_.tostring() -ErrorLog
                                     Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$groupDN" -FailureGroup GroupMembership -RelatedObjectIdentifier $GroupDN -RelatedObjectIdentifierType DistinguishedName
                                 }#catch
                             }#Foreach
@@ -2544,23 +2544,23 @@ function Set-ExchangeAttributesOnTargetObject
                     $writeProgressParams.currentoperation = "Processing Contacts for $TADUGUID"
                     Write-Progress @writeProgressParams
                     if ($deletecontact -and $intobj.MatchingContactObject.count -ge 1) {
-                        Write-Log -message "Attempting: Delete $($intobj.MatchingContactObject.count) Mail Contact(s) from $TargetAD" -Verbose
+                        Write-OneShellLog -message "Attempting: Delete $($intobj.MatchingContactObject.count) Mail Contact(s) from $TargetAD" -Verbose
                         foreach ($c in $intobj.MatchingContactObject) {
                             try {
-                                Write-Log -message "Attempting: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
+                                Write-OneShellLog -message "Attempting: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
                                 Push-Location
                                 Set-Location $($TargetAD + ':\')
                                 $Domain = Get-AdObjectDomain -adobject $c -ErrorAction Stop
                                 $splat = @{Identity = $c.distinguishedname;Confirm=$false;ErrorAction='Stop';Server=$Domain}
                                 Remove-ADObject @splat
                                 Pop-Location
-                                Write-Log -message "Succeeded: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
+                                Write-OneShellLog -message "Succeeded: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose
                             }#try
                             catch {
                                 Pop-Location
                                 #$Global:ErrorActionPreference = 'Continue'
-                                Write-Log -message "FAILED: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose -ErrorLog
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message "FAILED: Delete $($c.distinguishedname) Mail Contact from $TargetAD" -Verbose -ErrorLog
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 $Global:SEATO_MailContactDeletionFailures+=$c
                             }#catch
                         }#foreach
@@ -2569,12 +2569,12 @@ function Set-ExchangeAttributesOnTargetObject
                     #copy contact object memberships to Target AD User
                     #############################################################
                     if ($deletecontact -and $intobj.MatchingContactObject.count -ge 1) {
-                        Write-Log -message "Attempting: Add $TADUGUID to Contacts' Distribution Groups in $TargetAD" -Verbose
+                        Write-OneShellLog -message "Attempting: Add $TADUGUID to Contacts' Distribution Groups in $TargetAD" -Verbose
                         $ContactGroupMemberships = @($intobj.MatchingContactObject | Select-Object -ExpandProperty MemberOf)
                         foreach ($group in $ContactGroupMemberships) {
                             try {
                                 $message = "Add-ADGroupMember -Members $TADUGUID -Identity $group"
-                                Write-Log -message $message -EntryType Attempting
+                                Write-OneShellLog -message $message -EntryType Attempting
                                 Push-Location
                                 Set-Location $($TargetAD + ':\')
                                 $ADGroup = Get-ADGroup -Identity $group -ErrorAction Stop -Properties CanonicalName
@@ -2582,12 +2582,12 @@ function Set-ExchangeAttributesOnTargetObject
                                 $splat = @{Identity = $group;Confirm=$false;ErrorAction='Stop';Members=$TADUGUID;Server=$Domain}
                                 Add-ADGroupMember @splat
                                 Pop-Location
-                                Write-Log -message $message -EntryType Succeeded
+                                Write-OneShellLog -message $message -EntryType Succeeded
                             }#try
                             catch {
                                 Pop-Location
-                                Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                Write-Log -Message $_.tostring() -ErrorLog
+                                Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                Write-OneShellLog -Message $_.tostring() -ErrorLog
                                 Export-FailureRecord -Identity $TADUGUID -ExceptionCode "GroupMembershipFailure:$group" -FailureGroup GroupMembership -RelatedObjectIdentifier $Group -RelatedObjectIdentifierType DistinguishedName
                             }#catch
                         }#foreach
@@ -2600,7 +2600,7 @@ function Set-ExchangeAttributesOnTargetObject
                     if ($DeleteSourceObject -and ($intobj.TargetUserObjectIsSourceUserObject -eq $false)) {
                         try {
                             $message = "Remove Object $SADUGUID from AD $SourceAD"
-                            Write-Log -message $message -EntryType Attempting
+                            Write-OneShellLog -message $message -EntryType Attempting
                             $Splat = @{
                                 Identity = $SADUGUID
                                 ErrorAction = 'Stop'
@@ -2608,11 +2608,11 @@ function Set-ExchangeAttributesOnTargetObject
                                 Server = Get-ADObjectDomain -adobject $SADU
                             }
                             Remove-ADObject @splat
-                            Write-Log -message $message -EntryType Succeeded
+                            Write-OneShellLog -message $message -EntryType Succeeded
                         }
                         catch {
-                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity $SADUGUID -ExceptionCode "SourceObjectRemovalFailure:$SADUGUID" -FailureGroup SourceObjectRemoval -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }
                     }
@@ -2624,7 +2624,7 @@ function Set-ExchangeAttributesOnTargetObject
                     if ($UpdateSourceObject -and ($intobj.TargetUserObjectIsSourceUserObject -eq $false)) {
                         try {
                             $message = "Update Object $SADUGUID in AD $SourceAD"
-                            Write-Log -message $message -EntryType Attempting
+                            Write-OneShellLog -message $message -EntryType Attempting
                             $Splat = @{
                                 Identity = $SADUGUID
                                 ErrorAction = 'Stop'
@@ -2636,13 +2636,13 @@ function Set-ExchangeAttributesOnTargetObject
                             Push-Location
                             Set-Location -Path $($SourceAD + ':\')
                             Set-ADObject @splat
-                            Write-Log -message $message -EntryType Succeeded
+                            Write-OneShellLog -message $message -EntryType Succeeded
                             Pop-Location
                         }
                         catch {
                             Pop-Location
-                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity $SADUGUID -ExceptionCode "SourceObjectRemovalFailure:$SADUGUID" -FailureGroup SourceObjectRemoval -RelatedObjectIdentifier $SADUGUID -RelatedObjectIdentifierType ObjectGUID
                         }
                     }
@@ -2656,15 +2656,15 @@ function Set-ExchangeAttributesOnTargetObject
                         $message = "Target User Object is the Source User Object.  Move to Destination OU: $DestinationOU"
                         try
                         {
-                            Write-Log -Message $message -EntryType Attempting -Verbose
+                            Write-OneShellLog -Message $message -EntryType Attempting -Verbose
                             $domain = Get-AdObjectDomain -adobject $TADU -ErrorAction Stop
                             Move-ADObject -Server $domain -Identity $TADUGUID -TargetPath $DestinationOU -ErrorAction Stop
-                            Write-Log -Message $message -EntryType Succeeded -Verbose
+                            Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
                         }
                         catch
                         {
-                            Write-Log -Message $message -EntryType Failed -Verbose
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -Message $message -EntryType Failed -Verbose
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                         }
                     }
                     #endregion MoveTargetObject
@@ -2685,7 +2685,7 @@ function Set-ExchangeAttributesOnTargetObject
                         do {
                         try {
                             $message = "Update-Recipient $TADUGUID in Exchange Organization $TargetExchangeOrganization"
-                            Write-Log -message $message -EntryType Attempting
+                            Write-OneShellLog -message $message -EntryType Attempting
                             $Splat = @{
                                 Identity = $TADUGUID
                                 ErrorAction = 'Stop'
@@ -2693,15 +2693,15 @@ function Set-ExchangeAttributesOnTargetObject
                             $ErrorActionPreference = 'Stop'
                             Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization > $null
                             Invoke-ExchangeCommand -cmdlet 'Update-Recipient' -splat $Splat -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
-                            Write-Log -message $message -EntryType Succeeded
+                            Write-OneShellLog -message $message -EntryType Succeeded
                             $RecipientUpdated = $true
                             $ErrorActionPreference = 'Continue'
                         }
                         catch {
                             $UpdateRecipientFailedCount++
                             $ErrorActionPreference = 'Continue'
-                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                            Write-Log -Message $_.tostring() -ErrorLog
+                            Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                             Export-FailureRecord -Identity $TADUGUID -ExceptionCode "UpdateRecipientFailure:$TADUGUID" -FailureGroup UpdateRecipient -RelatedObjectIdentifier $TADUGUID -RelatedObjectIdentifierType ObjectGUID
                             Start-Sleep -Seconds 5
                         }
@@ -2717,12 +2717,12 @@ function Set-ExchangeAttributesOnTargetObject
             if ($testOnly)
             {
                 $RecordCount = $ProcessedObjects.Count
-                Write-Log -Message "$recordcount Objects Processed for Test Only" -EntryType Notification -Verbose
+                Write-OneShellLog -Message "$recordcount Objects Processed for Test Only" -EntryType Notification -Verbose
                 foreach ($intObj in $ProcessedObjects)
                 {
                     $SADUGUID = $IntObj.SourceUserObjectGUID
                     $TADUGUID = $IntObj.TargetUserObjectGUID
-                    Write-Log -Message "Processed Object SADU $SADUGUID and TADU $TADUGUID" -EntryType Notification -Verbose
+                    Write-OneShellLog -Message "Processed Object SADU $SADUGUID and TADU $TADUGUID" -EntryType Notification -Verbose
                 }
                 Write-Output -InputObject $ProcessedObjects
             }
@@ -2730,13 +2730,13 @@ function Set-ExchangeAttributesOnTargetObject
             {
                 $RecordCount = $ProcessedObjects.Count
                 $cr = 0
-                Write-Log -Message "$recordcount Objects Processed Locally" -EntryType Notification -Verbose
+                Write-OneShellLog -Message "$recordcount Objects Processed Locally" -EntryType Notification -Verbose
                 if ($ProcessedObjects.Count -ge 1) {
                     #Start a Directory Synchronization to Azure AD Tenant
                     #Wait first for AD replication
-                    Write-Log -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
+                    Write-OneShellLog -Message "Waiting for $ADSyncDelayInSeconds seconds for AD Synchronization before starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
                     New-Timer -units Seconds -length $ADSyncDelayInSeconds -showprogress -Frequency 5 -voice
-                    #Write-Log -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
+                    #Write-OneShellLog -Message "Starting an Azure AD Directory Synchronization." -Verbose -EntryType Notification
                     #Start-DirectorySynchronization
                     #Build Properties for CSV Output
                 }
@@ -2789,15 +2789,15 @@ function Set-ExchangeAttributesOnTargetObject
                                             $message = "Set Exchange Online Mailbox $($IntObj.DesiredUPNAndPrimarySMTPAddress) for forwarding to $($IntObj.DesiredCoexistenceRoutingAddress)."
                                             Connect-Exchange -ExchangeOrganization OL
                                             $ErrorActionPreference = 'Stop'
-                                            Write-Log -message $message -EntryType Attempting
+                                            Write-OneShellLog -message $message -EntryType Attempting
                                             Invoke-ExchangeCommand -cmdlet 'Set-Mailbox' -ExchangeOrganization OL -string "-Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ForwardingSmtpAddress $($IntObj.DesiredCoexistenceRoutingAddress)" -ErrorAction Stop
-                                            Write-Log -message $message -EntryType Succeeded
+                                            Write-OneShellLog -message $message -EntryType Succeeded
                                             $ErrorActionPreference = 'Continue'
                                             $SetMailboxForwardingStatus = $true
                                         }
                                         catch {
-                                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
-                                            Write-Log -Message $_.tostring() -ErrorLog
+                                            Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
+                                            Write-OneShellLog -Message $_.tostring() -ErrorLog
                                             Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "SetCoexistenceForwardingFailure:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup SetCoexistenceForwarding
                                             $SetMailboxForwardingStatus = $false
                                             $ErrorActionPreference = 'Continue'
@@ -2827,23 +2827,23 @@ function Set-ExchangeAttributesOnTargetObject
                                     try
                                     {
                                         $message = "Create Move Request for $TADUGUID"
-                                        Write-Log -Message $message -EntryType Attempting
+                                        Write-OneShellLog -Message $message -EntryType Attempting
                                         $MRSourceData = @($IntObj | Select-Object $SourceDataProperties)
                                         $MR = @(New-MRMMoveRequest -SourceData $MRSourceData -wave $MoveRequestWaveBatchName -wavetype Sub -SuspendWhenReadyToComplete $true -ExchangeOrganization OL -LargeItemLimit 50 -BadItemLimit 50 -ErrorAction Stop)
                                         if ($MR.Count -eq 1)
                                         {
-                                            Write-Log -Message $message -EntryType Succeeded
+                                            Write-OneShellLog -Message $message -EntryType Succeeded
                                         } else {
-                                            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                                            #Write-Log -Message $_.tostring() -ErrorLog
+                                            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                                            #Write-OneShellLog -Message $_.tostring() -ErrorLog
                                             Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                                         }
 
                                     }
                                     catch
                                     {
-                                        Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                                        Write-Log -Message $_.tostring() -ErrorLog
+                                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                                        Write-OneShellLog -Message $_.tostring() -ErrorLog
                                         Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "CreateMoveRequestFailure" -FailureGroup MailboxMove -ExceptionDetails $_.tostring()
                                     }
                                 }#'UpdateAndMigrateOnPremisesMailbox'
@@ -2851,7 +2851,7 @@ function Set-ExchangeAttributesOnTargetObject
                         }
                         else {
                             $message = "Sync Related Failure for $($IntObj.DesiredUPNAndPrimarySMTPAddress)."
-                            Write-Log -message $message -Verbose -ErrorLog -EntryType Failed
+                            Write-OneShellLog -message $message -Verbose -ErrorLog -EntryType Failed
                             Export-FailureRecord -Identity $($IntObj.DesiredUPNAndPrimarySMTPAddress) -ExceptionCode "Synchronization:$($IntObj.DesiredUPNAndPrimarySMTPAddress)" -FailureGroup Synchronization
                         }
                     }
@@ -2867,33 +2867,33 @@ function Set-ExchangeAttributesOnTargetObject
                     #############################################################
                     $ProcessedUserSummary = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,MailNickName,UserPrincipalname,@{n='OriginalPrimarySMTPAddress';e={$IntObj.SourceUserMail}},@{n='CoexistenceForwardingAddress';e={$IntObj.DesiredCoexistenceRoutingAddress}},@{n='ObjectGUID';e={$_.ObjectGUID.GUID}},@{n='TargetOperation';e={$intobj.TargetOperation}},@{n='TimeStamp';e={Get-TimeStamp}}
                     $Global:SEATO_ProcessedUsers += $ProcessedUserSummary
-                    Write-Log -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
+                    Write-OneShellLog -Message "NOTE: Processing for $($TADU.UserPrincipalName) with GUID $TADUGUID in $TargetAD has completed successfully." -Verbose
                 }#foreach IntObj in ProcessedObjects
                 $writeProgressParams.currentOperation = "Completed Post Attribute/Object Update Operations"
                 Write-Progress @writeProgressParams -Completed
                 #region ReportAllResults
                 if ($Global:SEATO_ProcessedUsers.count -ge 1) {
-                    Write-Log -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
+                    Write-OneShellLog -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
                     Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
                     Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
                 }
                 if ($Global:SEATO_Exceptions.count -ge 1) {
-                    Write-Log -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
+                    Write-OneShellLog -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
                 }
                 if ($Global:SEATO_MailContactsFound.count -ge 1) {
-                    Write-Log -Message "$($Global:SEATO_MailContactsFound.count) Contacts were found and are being exported."
+                    Write-OneShellLog -Message "$($Global:SEATO_MailContactsFound.count) Contacts were found and are being exported."
                     Export-Data -DataToExportTitle FoundMailContacts -DataToExport $Global:SEATO_MailContactsFound -Depth 2 -DataType xml
                 }
                 if ($Global:SEATO_OriginalTargetUsers.count -ge 1) {
-                    Write-Log -Message "$($Global:SEATO_OriginalTargetUsers.count) Original Target Users were attempted for processing and are being exported."
+                    Write-OneShellLog -Message "$($Global:SEATO_OriginalTargetUsers.count) Original Target Users were attempted for processing and are being exported."
                     Export-Data -DataToExportTitle OriginalTargetUsers -DataToExport $Global:SEATO_OriginalTargetUsers -Depth 2 -DataType xml
                 }
                 if ($Global:SEATO_MailContactDeletionFailures.Count -ge 1) {
-                    Write-Log -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
+                    Write-OneShellLog -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
                     Export-Data -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
                 }
                 if ($Global:SEATO_OLMailboxSummary.count -ge 1) {
-                    Write-Log -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
+                    Write-OneShellLog -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
                     Export-Data -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
                 }
                 #endregion ReportAllResults
@@ -2916,18 +2916,18 @@ function Add-EmailAddress
         try
         {
             $message = "Get Recipient for Identity $Identity"
-            #Write-Log -Message $message -EntryType Attempting -Verbose
+            #Write-OneShellLog -Message $message -EntryType Attempting -Verbose
             $Splat = @{
                 Identity = $Identity
                 ErrorAction = 'Stop'
             }
             $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -splat $Splat -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
-            #Write-Log -Message $message -EntryType Succeeded -Verbose
+            #Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
         }
         catch
         {
-            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
-            Write-Log -Message $_.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-OneShellLog -Message $_.tostring() -ErrorLog
             Return
         }
         #Determine the Set cmdlet to use based on the Recipient Object
@@ -2935,19 +2935,19 @@ function Add-EmailAddress
         try
         {
             $message = "Add Email Address $($EmailAddresses -join ',') to recipient $Identity"
-            Write-Log -Message $message -EntryType Attempting -Verbose
+            Write-OneShellLog -Message $message -EntryType Attempting -Verbose
             $splat = @{
                 Identity = $Identity
                 EmailAddresses = @{Add = $EmailAddresses}
                 ErrorAction = 'Stop'
             }
             Invoke-ExchangeCommand -cmdlet $cmdlet -splat $splat -ExchangeOrganization $ExchangeOrganization -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded -Verbose
+            Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
         }
         catch
         {
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $_.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $_.tostring() -ErrorLog
         }
     }
 #end function Add-EmailAddress
@@ -2966,18 +2966,18 @@ function Remove-EmailAddress
         try
         {
             $message = "Get Recipient for Identity $Identity"
-            #Write-Log -Message $message -EntryType Attempting -Verbose
+            #Write-OneShellLog -Message $message -EntryType Attempting -Verbose
             $Splat = @{
                 Identity = $Identity
                 ErrorAction = 'Stop'
             }
             $Recipient = Invoke-ExchangeCommand -cmdlet Get-Recipient -splat $Splat -ErrorAction Stop -ExchangeOrganization $ExchangeOrganization
-            #Write-Log -Message $message -EntryType Succeeded -Verbose
+            #Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
         }
         catch
         {
-            Write-Log -Message $message -EntryType Failed -Verbose -ErrorLog
-            Write-Log -Message $_.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -Verbose -ErrorLog
+            Write-OneShellLog -Message $_.tostring() -ErrorLog
             Return
         }
         #Determine the Set cmdlet to use based on the Recipient Object
@@ -2985,19 +2985,19 @@ function Remove-EmailAddress
         try
         {
             $message = "Remove Email Address $($EmailAddresses -join ',') from recipient $Identity"
-            Write-Log -Message $message -EntryType Attempting -Verbose
+            Write-OneShellLog -Message $message -EntryType Attempting -Verbose
             $splat = @{
                 Identity = $Identity
                 EmailAddresses = @{Remove = $EmailAddresses}
                 ErrorAction = 'Stop'
             }
             Invoke-ExchangeCommand -cmdlet $cmdlet -splat $splat -ExchangeOrganization $ExchangeOrganization -ErrorAction Stop
-            Write-Log -Message $message -EntryType Succeeded -Verbose
+            Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
         }
         catch
         {
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $_.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $_.tostring() -ErrorLog
         }
     }
 #end function Remove-EmailAddress
@@ -3041,29 +3041,29 @@ function Reset-AzureADUserPrincipalName
         }#switch
         try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $OriginalAzureADUser = Get-MsolUser @splat
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }#try
         catch
         {
             $myerror = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             throw {$myerror}
         }#catch
         $message = "Get Tenant domain to use for temporary UPN value"
         try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $TenantDomain = Get-MsolDomain -ErrorAction Stop | Where-Object -FilterScript {$_.Name -like '*.onmicrosoft.com' -and $_.name -notlike '*.mail.onmicrosoft.com'} | Select-Object -ExpandProperty Name
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }#try
         catch
         {
             $myerror = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             throw {$myerror}
         }#catch
         $temporaryUPN = $OriginalAzureADUser.ObjectID.guid + '@' + $TenantDomain
@@ -3075,15 +3075,15 @@ function Reset-AzureADUserPrincipalName
         }#splat
         try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             Set-MsolUserPrincipalName @splat | Out-Null #temporary password output thrown away
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }#try
         catch
         {
             $myerror = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             throw {$myerror}
         }#catch
         $message = "Set Azure AD User $($OriginalAzureADUser.ObjectID.guid) UserPrincipalName to Desired value $DesiredUserPrincipalName"
@@ -3094,15 +3094,15 @@ function Reset-AzureADUserPrincipalName
         }#splat
         try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             Set-MsolUserPrincipalName @splat
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }#try
         catch
         {
             $myerror = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             throw {$myerror}
         }#catch
         if ($PSBoundParameters.ContainsKey('Verify'))
@@ -3222,7 +3222,7 @@ function Get-ADRecipientsWithConflictingProxyAddresses
             $type = $pa2c.split(':')[0]
             if (Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType $type -ExchangeOrganization $TargetExchangeOrganization)
             {
-                    Write-Log -Message "No Conflict for $pa2c" -EntryType Notification -Verbose
+                    Write-OneShellLog -Message "No Conflict for $pa2c" -EntryType Notification -Verbose
             }
             else
             {
@@ -3268,7 +3268,7 @@ function Get-ADRecipientsWithConflictingAlias
             }
             if (Test-ExchangeAlias -Alias $Alias -ExchangeOrganization $TargetExchangeOrganization)
             {
-                Write-Log -Message "No Conflict for $Alias" -EntryType Notification -Verbose
+                Write-OneShellLog -Message "No Conflict for $Alias" -EntryType Notification -Verbose
             }
             else
             {
@@ -3465,10 +3465,10 @@ function Publish-Groups
         foreach ($sg in $SourceGroups)
         {
             $csgCount++
-            Write-Log -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
+            Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
         #region Prepare
             $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
-            Write-Log -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
+            Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
             $WriteProgressParams =
             @{
                 Activity = "Provisioning $($SourceGroups.count) Groups into $TargetExchangeOrganization, $TargetGroupOU"
@@ -3546,14 +3546,14 @@ function Publish-Groups
                     }
                     try
                     {
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         Invoke-ExchangeCommand -cmdlet $cmdlet -splat $rrParams -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                     }
                     catch
                     {
-                        Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                     }
                 }
             }
@@ -3607,21 +3607,21 @@ function Publish-Groups
                     $message = "Create Contact $ContactDesiredAlias for group $desiredAlias."
                     try
                     {
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
                         $newContact = Invoke-ExchangeCommand -cmdlet 'New-MailContact' -ExchangeOrganization $TargetExchangeOrganization -splat $newMailContactParams
                         $mappedTargetMemberContacts += $newContact.guid.guid
                         $AllMappedMembersToAddAtCreation += $newContact.guid.guid
-                        Write-Log -Message $message -EntryType Failed
+                        Write-OneShellLog -Message $message -EntryType Failed
                         $message = "Find Newly Created Contact $ContactDesiredAlias."
                         $found = $false
                         do
                         {
-                            #Write-Log -Message $message -EntryType Attempting
+                            #Write-OneShellLog -Message $message -EntryType Attempting
                             $Contact = @(Invoke-ExchangeCommand -cmdlet 'Get-MailContact' -string "-Identity $ContactDesiredAlias" -ExchangeOrganization $TargetExchangeOrganization)
                             if ($Contact.Count -eq 1)
                             {
-                                Write-Log -Message $message -EntryType Succeeded
+                                Write-OneShellLog -Message $message -EntryType Succeeded
                                 $found = $true
                             }
                             Start-Sleep -Seconds 10
@@ -3631,9 +3631,9 @@ function Publish-Groups
                             $found -eq $true
                         )
                         $message = "Set Newly Created Contact $ContactDesiredName Attributes"
-                        Write-Log -Message $message -EntryType Attempting
+                        Write-OneShellLog -Message $message -EntryType Attempting
                         Invoke-ExchangeCommand -cmdlet 'Set-MailContact' -splat $setMailContactParams -exchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                         foreach ($pa in $ContactDesiredProxyAddresses) {
                             $type = $pa.split(':')[0]
                             if ($type -in 'SMTP','x500')
@@ -3646,8 +3646,8 @@ function Publish-Groups
                     }
                     catch
                     {
-                        Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                        Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                        Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                        Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
                     }
                 }#else
             }#foreach $NMC
@@ -3681,19 +3681,19 @@ function Publish-Groups
             try
             {
                 $message = "Create Group $desiredAlias"
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $newgroup = Invoke-ExchangeCommand -cmdlet 'New-DistributionGroup' -splat $newDistributionGroupParams -exchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
-                Write-Log -Message $message -EntryType Succeeded
+                Write-OneShellLog -Message $message -EntryType Succeeded
                 Start-Sleep -Seconds 1
                 $message = "Find Newly Created Group $desiredAlias"
                 $found = $false
                 Do
                 {
-                    #Write-Log -Message $message -EntryType Attempting
+                    #Write-OneShellLog -Message $message -EntryType Attempting
                     $group = @(Invoke-ExchangeCommand -cmdlet 'Get-DistributionGroup' -string "-Identity $desiredAlias -ErrorAction SilentlyContinue" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction SilentlyContinue)
                     if ($group.Count -eq 1)
                     {
-                        Write-Log -Message $message -EntryType Succeeded
+                        Write-OneShellLog -Message $message -EntryType Succeeded
                         $found = $true
                     }
                     Start-Sleep -Seconds 1
@@ -3701,9 +3701,9 @@ function Publish-Groups
                 Until
                 ($found -eq $true)
                 $message = "Set Group $desiredAlias Attributes"
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 Invoke-ExchangeCommand -cmdlet 'Set-DistributionGroup' -splat $setDistributionGroupParams -ExchangeOrganization $TargetExchangeOrganization
-                Write-Log -Message $message -EntryType Succeeded
+                Write-OneShellLog -Message $message -EntryType Succeeded
                 foreach ($pa in $DesiredProxyAddresses) {
                     $type = $pa.split(':')[0]
                     if ($type -in 'SMTP','x500')
@@ -3712,12 +3712,12 @@ function Publish-Groups
                     }
                 }
                 Add-ExchangeAliasToTestExchangeAlias -Alias $desiredAlias -ObjectGUID $newgroup.guid.guid
-                Write-Log -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose
+                Write-OneShellLog -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose
             }
             catch
             {
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $_.tostring() -ErrorLog -Verbose
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
             }
             #endregion ProvisionDistributionGroup
             }#else
@@ -3816,15 +3816,15 @@ Function New-MailFlowContactFromMailbox
         $message = "Get Recipient Object for Identity ($Identity) from Source Exchange Organization ($SourceExchangeOrganization)"
         Try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $SourceRecipientObject = @(Invoke-ExchangeCommand @GetRecipientParams)
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }
         Catch
         {
             $MyError = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             Throw $MyError
         }
         $GetFullRecipientCmdlet = Get-RecipientCmdlet -Recipient $SourceRecipientObject -verb Get -ErrorAction Stop
@@ -3839,15 +3839,15 @@ Function New-MailFlowContactFromMailbox
         }
         Try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $SourceRecipientObject = @(Invoke-ExchangeCommand @GetFullRecipientCmdletParams)
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }
         Catch
         {
             $MyError = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             Throw $MyError
         }
         #endregion
@@ -3860,15 +3860,15 @@ Function New-MailFlowContactFromMailbox
         $message = "Get Desired Alias for Identity ($Identity) from Target Exchange Organization ($TargetExchangeOrganization)"
         Try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }
         Catch
         {
             $MyError = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             Throw $MyError
         }
         $GetDesiredProxyAddressesParams = @{
@@ -3893,15 +3893,15 @@ Function New-MailFlowContactFromMailbox
         $message = "Get Desired ProxyAddresses for Identity ($Identity)"
         Try
         {
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
-            Write-Log -Message $message -EntryType Succeeded
+            Write-OneShellLog -Message $message -EntryType Succeeded
         }
         Catch
         {
             $MyError = $_
-            Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-            Write-Log -Message $myerror.tostring() -ErrorLog
+            Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+            Write-OneShellLog -Message $myerror.tostring() -ErrorLog
             Throw $MyError
         }
         $IntermediateObject = [pscustomobject]@{
@@ -3961,19 +3961,19 @@ Function New-MailFlowContactFromMailbox
             $message = "Create New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)"
             Try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 $NewMailContactOutput = Invoke-ExchangeCommand @newMailContactParams
-                Write-Log -Message $message -EntryType Succeeded
+                Write-OneShellLog -Message $message -EntryType Succeeded
             }
             Catch
             {
                 $MyError = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                 Throw $MyError
             }
             $message = "Get New Mail Contact for Identity ($identity) in Target Exchange Organization ($TargetExchangeOrganization)"
-            Write-Log -Message $message -EntryType Attempting
+            Write-OneShellLog -Message $message -EntryType Attempting
             $FindAttemptCount = 0
             Do
             {
@@ -3998,15 +3998,15 @@ Function New-MailFlowContactFromMailbox
             $message  = "Set additional attributes for Mail Contact for Identity ($Identity) in Target Exchange Organization ($TargetExchangeOrganization)"
             Try
             {
-                Write-Log -Message $message -EntryType Attempting
+                Write-OneShellLog -Message $message -EntryType Attempting
                 Invoke-ExchangeCommand @setMailContactParams
-                Write-Log -Message $message -EntryType Succeeded
+                Write-OneShellLog -Message $message -EntryType Succeeded
             }
             Catch
             {
                 $MyError = $_
-                Write-Log -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-Log -Message $myerror.tostring() -ErrorLog
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog
                 Throw $MyError
             }
         }
