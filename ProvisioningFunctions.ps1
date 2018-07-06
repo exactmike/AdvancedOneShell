@@ -153,33 +153,33 @@ function New-ResourceMailboxIntermediateObject
     [cmdletbinding()]
     param
     (
-            [parameter(Mandatory)]
-            [psobject[]]$Resource
-            ,
-            [parameter(Mandatory)]
-            [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
-            ,
-            [parameter(Mandatory)]
-            [string]$NewPrefix
-            ,
-            [parameter(Mandatory)]
-            [string]$TargetSMTPDomain
-            ,
-            [parameter(Mandatory)]
-            [string]$TargetDeliveryDomain
-            ,
-            [parameter()]
-            [string[]]$DomainsToRemove
-            ,
-            [parameter(Mandatory)]
-            [string]$AliasFormula = '$_.mail.split("@")[0]'
-            ,
-            [parameter()]
-            [switch]$PrefixOnlyIfNecessary
-            ,
-            [parameter()]
-            [switch]$PreserveCurrentProxyAddresses
-        )
+        [parameter(Mandatory)]
+        [psobject[]]$Resource
+        ,
+        [parameter(Mandatory)]
+        [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
+        ,
+        [parameter(Mandatory)]
+        [string]$NewPrefix
+        ,
+        [parameter(Mandatory)]
+        [string]$TargetSMTPDomain
+        ,
+        [parameter(Mandatory)]
+        [string]$TargetDeliveryDomain
+        ,
+        [parameter()]
+        [string[]]$DomainsToRemove
+        ,
+        [parameter(Mandatory)]
+        [string]$AliasFormula = '$_.mail.split("@")[0]'
+        ,
+        [parameter()]
+        [switch]$PrefixOnlyIfNecessary
+        ,
+        [parameter()]
+        [switch]$PreserveCurrentProxyAddresses
+    )
     $IntermediateObjects = @(
         :nextResource foreach ($r in $Resource)
         {
@@ -302,6 +302,27 @@ function New-ResourceMailboxIntermediateObject
                 Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
                 continue nextResource
             }
+            $message = "Get Desired Display Name for $FriendlyIdentity"
+            try
+            {
+                $GetDesiredTargetNameParams = @{
+                    SourceName = $r.DisplayName
+                    ErrorAction = 'Stop'
+                }
+                if ($PrefixOnlyIfNecessary -eq $false)
+                {
+                    $GetDesiredTargetNameParams.NewPrefix = $NewPrefix
+                }
+                $DesiredDisplayName = Get-DesiredTargetName @GetDesiredTargetNameParams
+                Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
+            }
+            catch
+            {
+                $myerror = $_
+                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                Write-OneShellLog -Message $myerror.tostring() -ErrorLog -Verbose
+                continue nextResource
+            }
             #need to update this code to propery specify and convert objects
             $message = "Check $FriendlyIdentity RecipientTypeDetails $($r.RecipientTypeDetails) and Convert to SharedMailbox if needed"
             Write-OneShellLog -Message $message -EntryType Notification
@@ -330,7 +351,7 @@ function New-ResourceMailboxIntermediateObject
                 SamAccountName = $DesiredAlias.substring(0,$SAMLength)
                 proxyaddresses = [string[]]$DesiredAddresses
                 Name = $DesiredName
-                DisplayName = $DesiredName
+                DisplayName = $DesiredDisplayName
                 UserPrincipalName = $DesiredNewProxyAddress
                 SourceIdentity = $FriendlyIdentity
                 employeeType = 'Resource'
