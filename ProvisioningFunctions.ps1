@@ -87,7 +87,7 @@ function Get-DesiredTargetName
         [string]$NewPrefix
         )
         $Name = $SourceName
-        $Name = $Name -replace '|[^1-9a-zA-Z_-]',''
+        $Name = ($Name -replace '|*[^1-9a-zA-Z_-]','') -replace '\*',''
         switch ($PSCmdlet.ParameterSetName)
         {
             'ReplacePrefix'
