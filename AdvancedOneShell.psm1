@@ -254,7 +254,7 @@ Function Export-FailureRecord
         }
         try {
         $ExceptionObject = $Exception | Convert-HashTableToObject
-        Export-Data -DataToExportTitle $FailureGroup -DataToExport $ExceptionObject -Append -DataType csv -ErrorAction Stop
+        Export-OneShellData -DataToExportTitle $FailureGroup -DataToExport $ExceptionObject -Append -DataType csv -ErrorAction Stop
         $Global:SEATO_Exceptions += $ExceptionObject
         }
         catch {
@@ -384,13 +384,13 @@ function Update-PostMigrationMailboxUser
                         Write-OneShellLog -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD" -Verbose -ErrorLog
                         Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserNotFound'}}
-                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD not found.")
                     }#catch
                     if ($TADU.count -gt 1) {#check for ambiguous results
                         Write-OneShellLog -Message "FAILED: Find AD User $ID in Target AD Forest $TargetAD returned multiple objects/ambiguous results." -Verbose -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'TargetADUserAmbiguous'}}
-                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("User Object for value $ID in Attribute $TargetLookupAttribute in Target AD $TargetAD was ambiguous.")
                     }#if
                     else {
@@ -426,13 +426,13 @@ function Update-PostMigrationMailboxUser
                         0 {
                             Write-OneShellLog -message "FAILED: Found 0 Matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserNotFound'}}
-                            Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                            Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                             throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') not found.")
                         }#0
                         Default {
                             Write-OneShellLog -message "FAILED: Found multiple ambiguous matching User for $ID in Source AD $($SourceAD -join ' & ') by Lookup Attribute $SourceLookupAttribute" -Verbose
                             $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'SourceADUserAmbiguous'}}
-                            Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                            Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                             throw("User Object for value $ID in Attribute $SourceLookupAttribute in Source AD $($SourceAD -join ' & ') was ambiguous.")
                         }#Default
                     }#switch $SADU.count
@@ -482,7 +482,7 @@ function Update-PostMigrationMailboxUser
                         Write-OneShellLog -message "FAILED: Clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD" -Verbose -ErrorLog
                         Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToClearTargetAttributes'}}
-                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to clear target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
                     }#catch
                     #SetNewValuesOnTargetAttributes
@@ -508,7 +508,7 @@ function Update-PostMigrationMailboxUser
                         Write-OneShellLog -message "FAILED: SET target attributes $($setaduserparams2.'Add'.keys -join ';')  for $ID in $TargetAD" -Verbose -ErrorLog
                         Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToSetTargetAttributes'}}
-                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
                     }#catch
                     #have exchange clean up and set version/legacyexchangedn
@@ -529,7 +529,7 @@ function Update-PostMigrationMailboxUser
                         Write-OneShellLog -message "FAILED: Enable-ADAccount $TADUGUID in $TargetAD" -Verbose -ErrorLog
                         Write-OneShellLog -Message $_.tostring() -ErrorLog
                         $Global:Exceptions += $ID | Select-Object *,@{n='Exception';e={'FailedToEnableAccount'}}
-                        Export-Data -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle PostMailboxMigrationExceptionUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to set target attributes $($setaduserparams1.clear -join ',') for $TADUGUID in $TargetAD")
                     }#catch
 
@@ -556,13 +556,13 @@ function Update-PostMigrationMailboxUser
                         Write-OneShellLog -message "FAILED: Update Recipient $DesiredUPNAndPrimarySMTPAddress in $TargetExchangeOrg" -Verbose -ErrorLog
                         Write-OneShellLog -message $_.tostring() -ErrorLog
                         $Global:Exceptions += $DesiredUPNAndPrimarySMTPAddress | Select-Object *,@{n='Exception';e={'FailedToUpdateRecipient'}}
-                        Export-Data -DataToExportTitle TargetForestExceptionsUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
+                        Export-OneShellData -DataToExportTitle TargetForestExceptionsUsers -DataToExport $Global:Exceptions[-1] -DataType csv -Append
                         throw("Failed to Update Recipient for $TADUGUID in $TargetExchangeOrg")
                     }
                     $ProcessedUser = $TADU | Select-Object -Property SAMAccountName,DistinguishedName,@{n='UserPrincipalname';e={$DesiredUPNAndPrimarySMTPAddress}},@{n='ObjectGUID';e={$TADUGUID}}
                     $Global:ProcessedUsers += $ProcessedUser
                     Write-OneShellLog -Message "NOTE: Processing for $DesiredUPNAndPrimarySMTPAddress with GUID $TADUGUID in $TargetAD and $TargetExchangeOrg has completed successfully." -Verbose
-                Export-Data -DataToExportTitle PostMailboxMigrationProcessedUsers -DataToExport $ProcessedUser -DataType csv -Append
+                Export-OneShellData -DataToExportTitle PostMailboxMigrationProcessedUsers -DataToExport $ProcessedUser -DataType csv -Append
             }#try
             catch {
                 $_
@@ -1809,7 +1809,7 @@ function Set-ExchangeAttributesOnTargetObject
             Write-OneShellLog -Message "$($IntermediateObjects.count) Object(s) Processed (Lookup of Source and Target Objects and Attribute Calculations)." -EntryType Notification
             #region CYABackup
             #depth must be 2 or greater to capture and restore MV attributes like proxy addresses correctly
-            Export-Data -DataToExport $IntermediateObjects -DataToExportTitle IntermediateObjects -Depth 3 -DataType json
+            Export-OneShellData -DataToExport $IntermediateObjects -DataToExportTitle IntermediateObjects -Depth 3 -DataType json
             #endregion CYABackup
             #############################################################
             #preparation activities complete, time to write changes to Target AD Objects
@@ -2874,27 +2874,27 @@ function Set-ExchangeAttributesOnTargetObject
                 #region ReportAllResults
                 if ($Global:SEATO_ProcessedUsers.count -ge 1) {
                     Write-OneShellLog -Message "Successfully Processed $($Global:SEATO_ProcessedUsers.count) Users."
-                    Export-Data -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
-                    Export-Data -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
+                    Export-OneShellData -DataToExportTitle TargetForestProcessedUsers -DataToExport $Global:SEATO_ProcessedUsers -DataType csv #-Append
+                    Export-OneShellData -DataToExportTitle TargetForestFullProcessedUsers -DataToExport $Global:SEATO_FullProcessedUsers -DataType csv
                 }
                 if ($Global:SEATO_Exceptions.count -ge 1) {
                     Write-OneShellLog -Message "Processed $($Global:SEATO_Exceptions.count) Users with Exceptions."
                 }
                 if ($Global:SEATO_MailContactsFound.count -ge 1) {
                     Write-OneShellLog -Message "$($Global:SEATO_MailContactsFound.count) Contacts were found and are being exported."
-                    Export-Data -DataToExportTitle FoundMailContacts -DataToExport $Global:SEATO_MailContactsFound -Depth 2 -DataType xml
+                    Export-OneShellData -DataToExportTitle FoundMailContacts -DataToExport $Global:SEATO_MailContactsFound -Depth 2 -DataType xml
                 }
                 if ($Global:SEATO_OriginalTargetUsers.count -ge 1) {
                     Write-OneShellLog -Message "$($Global:SEATO_OriginalTargetUsers.count) Original Target Users were attempted for processing and are being exported."
-                    Export-Data -DataToExportTitle OriginalTargetUsers -DataToExport $Global:SEATO_OriginalTargetUsers -Depth 2 -DataType xml
+                    Export-OneShellData -DataToExportTitle OriginalTargetUsers -DataToExport $Global:SEATO_OriginalTargetUsers -Depth 2 -DataType xml
                 }
                 if ($Global:SEATO_MailContactDeletionFailures.Count -ge 1) {
                     Write-OneShellLog -Message "$($Global:SEATO_MailContactDeletionFailures.Count) Mail Contact(s) NOT successfully deleted.  Exporting them for review."
-                    Export-Data -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
+                    Export-OneShellData -DataToExportTitle MailContactsNOTDeleted -DataToExport $Global:SEATO_MailContactDeletionFailures -DataType csv
                 }
                 if ($Global:SEATO_OLMailboxSummary.count -ge 1) {
                     Write-OneShellLog -Message "$($Global:SEATO_OLMailboxSummary.Count) Online Mailboxes Configured for Forwarding.  Exporting summary details for review."
-                    Export-Data -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
+                    Export-OneShellData -DataToExportTitle OnlineMailboxForwarding -DataToExport $Global:SEATO_OLMailboxSummary -DataType csv
                 }
                 #endregion ReportAllResults
             }# else when NOT -TestOnly
@@ -3289,24 +3289,33 @@ function New-SourceTargetRecipientMap
         [cmdletbinding()]
         param
         (
-        $SourceRecipients
-        ,
-        $TargetExchangeOrganization
+            $SourceRecipients
+            ,
+            $ExchangeSystem
+            ,
+            [hashtable]$DomainReplacement = @{}
         )
         $SourceTargetRecipientMap = @{}
         $TargetSourceRecipientMap = @{}
         foreach ($SR in $SourceRecipients)
         {
+            Connect-OneShellSystem -Identity $ExchangeSystem
+            $ExchangeSession = Get-OneShellSystemPSSession -id $ExchangeSystem
             $ProxyAddressesToCheck = $sr.proxyaddresses | Where-Object -FilterScript {$_ -ilike 'smtp:*'}
             $rawrecipientmatches =
             @(
                 foreach ($pa2c in $ProxyAddressesToCheck)
                 {
-                    if (Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeOrganization $TargetExchangeOrganization)
+                    $domain = $pa2c.split('@')[1] 
+                    if ($domain -in $DomainReplacement.Keys)
+                    {
+                        $pa2c = $pa2c.replace($domain,$($DomainReplacement.$domain))
+                    }
+                    if (Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeSession $ExchangeSession)
                     {$null}
                     else
                     {
-                        Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeOrganization $TargetExchangeOrganization -ReturnConflicts
+                        Test-ExchangeProxyAddress -ProxyAddress $pa2c -ProxyAddressType SMTP -ExchangeSession $ExchangeSession -ReturnConflicts
                     }
                 }
             )
@@ -3338,7 +3347,7 @@ function Get-TargetRecipientFromMap
         (
             $SourceObjectGUID
             ,
-            $TargetExchangeOrganization
+            $ExchangeSession
         )
         $TargetRecipientGUID = @($RecipientMaps.SourceTargetRecipientMap.$SourceObjectGUID)
         if ([string]::IsNullOrWhiteSpace($TargetRecipientGUID))
@@ -3349,8 +3358,9 @@ function Get-TargetRecipientFromMap
             @(
                 foreach ($id in $TargetRecipientGUID)
                 {
-                    $cmdlet = Get-RecipientCmdlet -Identity $id -verb Get -ExchangeOrganization $TargetExchangeOrganization
-                    Invoke-ExchangeCommand -cmdlet $cmdlet -string "-Identity $id" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
+                    $cmdlet = Get-RecipientCmdlet -Identity $id -verb Get -ExchangeSession $ExchangeSession
+                    $scriptblock = [scriptblock]::create("$cmdlet -Identity $id -ErrorAction Stop")
+                    Invoke-Command -session $ExchangeSession -scriptblock $scriptblock -ErrorAction Stop
                 }
             )
             $TargetRecipients
@@ -3445,6 +3455,8 @@ function Publish-Groups
         ,
         $ReplacementPrefix
         ,
+        [switch]$PrefixOnlyIfNecessary
+        ,
         $SourceGroups
         ,
         $SourceRecipients
@@ -3455,6 +3467,8 @@ function Publish-Groups
         ,
         [switch]$HideContacts
         )
+        Connect-OneShellSystem -Identity $TargetExchangeOrganization -ErrorAction Stop
+        $TargetExchangeOrganizationSession = Get-OneShellSystemPSSession -Identity $TargetExchangeOrganization
         if (-not (Test-Path variable:\IntermediateGroupObjects)) {
             New-Variable -Name IntermediateGroupObjects -Value @() -Scope Global
         }
@@ -3466,7 +3480,7 @@ function Publish-Groups
             $csgCount++
             Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
         #region Prepare
-            $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
+            $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix -PrefixOnlyIfNecessary
             Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
             $WriteProgressParams =
             @{
@@ -3477,16 +3491,16 @@ function Publish-Groups
             }
             if ($csgCount -gt 1){$WriteProgressParams.SecondsRemaining = ($($stopwatch.Elapsed.TotalSeconds.ToInt32($null))/($csgCount - 1)) * ($sgCount - ($csgCount - 1))}
             Write-Progress @WriteProgressParams
-            $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganization $TargetExchangeOrganization -TargetSMTPDomain $TargetSMTPDomain
-            $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
+            $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -TargetSMTPDomain $TargetSMTPDomain
+            $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName  -SourcePrefix $SourcePrefix #-ReplacementPrefix $ReplacementPrefix
             $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
-            $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -TargetExchangeOrganization $TargetExchangeOrganization
+            $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -ExchangeSession $TargetExchangeOrganizationSession
             $GetDesiredProxyAddressesParams = @{
-                CurrentProxyAddresses = $sg.proxyAddresses
+                #CurrentProxyAddresses = $sg.proxyAddresses
                 DesiredPrimaryAddress = $desiredPrimarySMTPAddress
                 DesiredOrCurrentAlias = $desiredAlias
-                Recipients = $targetRecipients
-                LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
+                #Recipients = $targetRecipients
+                #LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
             }
             $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
         #endregion Prepare
@@ -3524,7 +3538,7 @@ function Publish-Groups
                 SourceObject = $sg
             }
             $Global:intermediateGroupObjects += $intermediateGroupObject
-            Export-Data -DataToExportTitle $("Group-" + $DesiredAlias) -DataToExport $intermediateGroupObject -Depth 3 -DataType json
+            Export-OneShellData -DataToExportTitle $("Group-" + $DesiredAlias) -DataToExport $intermediateGroupObject -Depth 3 -DataType json
         #endregion IntermediateGroupObject
             if ($TestOnly)
             {
@@ -3561,12 +3575,13 @@ function Publish-Groups
             foreach ($nmc in $nonMappedTargetMemberContacts)
             {
                 try {
-                    $ContactDesiredName = Get-DesiredTargetName -SourceName $nmc.DisplayName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
-                    $ContactDesiredAlias = Get-DesiredTargetAlias -SourceAlias $nmc.MailNickName -TargetExchangeOrganization $TargetExchangeOrganization -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix
-                    $ContactDesiredProxyAddresses = Get-DesiredProxyAddresses -CurrentProxyAddresses $nmc.proxyAddresses -DesiredOrCurrentAlias $ContactDesiredAlias -LegacyExchangeDNs $nmc.legacyExchangeDN
+                    $ContactDesiredName = Get-DesiredTargetName -SourceName $nmc.DisplayName -SourcePrefix $SourcePrefix #-ReplacementPrefix $ReplacementPrefix
+                    $ContactDesiredAlias = Get-DesiredTargetAlias -SourceAlias $nmc.MailNickName -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix -PrefixOnlyIfNecessary
+                    #$ContactDesiredProxyAddresses = Get-DesiredProxyAddresses -CurrentProxyAddresses $nmc.proxyAddresses -DesiredOrCurrentAlias $ContactDesiredAlias -LegacyExchangeDNs $nmc.legacyExchangeDN
+                    $ContactDesiredProxyAddresses = @($nmc.TargetAddress)
                 }
                 catch {
-                    Export-Data -DataToExport $nmc -DataToExportTitle "ContactCreationFailure-$($nmc.MailNickName)" -DataType json -Depth 3
+                    Export-OneShellData -DataToExport $nmc -DataToExportTitle "ContactCreationFailure-$($nmc.MailNickName)" -DataType json -Depth 3
                     Continue
                 }
                 $intermediateContactObject =
@@ -3577,7 +3592,7 @@ function Publish-Groups
                     DesiredProxyAddresses = $ContactDesiredProxyAddresses
                     SourceObject = $nmc
                 }
-                Export-Data -DataToExportTitle $("Contact-" + $ContactDesiredAlias) -DataToExport $intermediateContactObject -Depth 3 -DataType json
+                Export-OneShellData -DataToExportTitle $("Contact-" + $ContactDesiredAlias) -DataToExport $intermediateContactObject -Depth 3 -DataType json
                 if ($TestOnly)
                 {
                 }#if
@@ -3607,17 +3622,17 @@ function Publish-Groups
                     try
                     {
                         Write-OneShellLog -Message $message -EntryType Attempting
-                        Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
-                        $newContact = Invoke-ExchangeCommand -cmdlet 'New-MailContact' -ExchangeOrganization $TargetExchangeOrganization -splat $newMailContactParams
+                        Connect-OneShellSystem -Identity $TargetExchangeOrganization -ErrorAction Stop
+                        $TargetExchangeOrganizationSession = Get-OneShellSystemPSSession -identity $TargetExchangeOrganization -ErrorAction Stop
+                        $newContact = Invoke-Command -ScriptBlock {New-MailContact @Using:newMailContactParams}  -Session $TargetExchangeOrganizationSession
                         $mappedTargetMemberContacts += $newContact.guid.guid
                         $AllMappedMembersToAddAtCreation += $newContact.guid.guid
-                        Write-OneShellLog -Message $message -EntryType Failed
                         $message = "Find Newly Created Contact $ContactDesiredAlias."
                         $found = $false
                         do
                         {
                             #Write-OneShellLog -Message $message -EntryType Attempting
-                            $Contact = @(Invoke-ExchangeCommand -cmdlet 'Get-MailContact' -string "-Identity $ContactDesiredAlias" -ExchangeOrganization $TargetExchangeOrganization)
+                            $Contact = @(Invoke-Command -scriptblock {Get-MailContact -Identity $($using:NewContact).guid.guid} -Session $TargetExchangeOrganizationSession)
                             if ($Contact.Count -eq 1)
                             {
                                 Write-OneShellLog -Message $message -EntryType Succeeded
@@ -3631,17 +3646,8 @@ function Publish-Groups
                         )
                         $message = "Set Newly Created Contact $ContactDesiredName Attributes"
                         Write-OneShellLog -Message $message -EntryType Attempting
-                        Invoke-ExchangeCommand -cmdlet 'Set-MailContact' -splat $setMailContactParams -exchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
+                        Invoke-Command -ScriptBlock {Set-MailContact $using:setMailContactParams} -Session $TargetExchangeOrganizationSession -ErrorAction Stop
                         Write-OneShellLog -Message $message -EntryType Succeeded
-                        foreach ($pa in $ContactDesiredProxyAddresses) {
-                            $type = $pa.split(':')[0]
-                            if ($type -in 'SMTP','x500')
-                            {
-                                    Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $pa -ProxyAddressType $type -ObjectGUID $newContact.guid.guid
-                            }
-
-                                }
-                                Add-ExchangeAliasToTestExchangeAlias -Alias $ContactDesiredAlias -ObjectGUID $newContact.guid.guid
                     }
                     catch
                     {
@@ -3656,81 +3662,63 @@ function Publish-Groups
             {}
             else
             {
-            $AliasLength = [math]::Min($desiredAlias.length,20)
-            $newDistributionGroupParams =
-            @{
-                DisplayName = $desiredName
-                Name = $desiredName
-                IgnoreNamingPolicy = $true
-                Members = @($AllMappedMembersToAddAtCreation | Where-Object {$_ -ne $null})
-                Type = 'Distribution'
-                Alias = $desiredAlias
-                SAMAccountName = $desiredAlias.substring(0,$AliasLength)#"$($ReplacementPrefix)_" + $sg.ObjectGUID.guid.Substring(24,12)
-                PrimarySmtpAddress = $desiredPrimarySMTPAddress
-                OrganizationalUnit = $TargetGroupOU
-                ErrorAction = 'Stop'
-            }
-            $setDistributionGroupParams =
-            @{
-                Identity = $desiredAlias
-                EmailAddresses = $DesiredProxyAddresses
-                EmailAddressPolicyEnabled = $false
-                errorAction = 'Stop'
-            }
-            try
-            {
-                $message = "Create Group $desiredAlias"
-                Write-OneShellLog -Message $message -EntryType Attempting
-                $newgroup = Invoke-ExchangeCommand -cmdlet 'New-DistributionGroup' -splat $newDistributionGroupParams -exchangeOrganization $TargetExchangeOrganization -ErrorAction Stop
-                Write-OneShellLog -Message $message -EntryType Succeeded
-                Start-Sleep -Seconds 1
-                $message = "Find Newly Created Group $desiredAlias"
-                $found = $false
-                Do
+                $AliasLength = [math]::Min($desiredAlias.length,20)
+                $newDistributionGroupParams =
+                @{
+                    DisplayName = $desiredName
+                    Name = $desiredName
+                    IgnoreNamingPolicy = $true
+                    Members = @($AllMappedMembersToAddAtCreation | Where-Object {$_ -ne $null})
+                    Type = 'Distribution'
+                    Alias = $desiredAlias
+                    SAMAccountName = $desiredAlias.substring(0,$AliasLength)#"$($ReplacementPrefix)_" + $sg.ObjectGUID.guid.Substring(24,12)
+                    PrimarySmtpAddress = $desiredPrimarySMTPAddress
+                    OrganizationalUnit = $TargetGroupOU
+                    ErrorAction = 'Stop'
+                }
+                try
                 {
-                    #Write-OneShellLog -Message $message -EntryType Attempting
-                    $group = @(Invoke-ExchangeCommand -cmdlet 'Get-DistributionGroup' -string "-Identity $desiredAlias -ErrorAction SilentlyContinue" -ExchangeOrganization $TargetExchangeOrganization -ErrorAction SilentlyContinue)
-                    if ($group.Count -eq 1)
-                    {
-                        Write-OneShellLog -Message $message -EntryType Succeeded
-                        $found = $true
-                    }
+                    $message = "Create Group $desiredAlias"
+                    Write-OneShellLog -Message $message -EntryType Attempting
+                    $newgroup = Invoke-Command -ScriptBlock {New-DistributionGroup @using:newDistributionGroupParams} -Session $TargetExchangeOrganizationSession -ErrorAction Stop
+                    Write-OneShellLog -Message $message -EntryType Succeeded
                     Start-Sleep -Seconds 1
-                }
-                Until
-                ($found -eq $true)
-                $message = "Set Group $desiredAlias Attributes"
-                Write-OneShellLog -Message $message -EntryType Attempting
-                Invoke-ExchangeCommand -cmdlet 'Set-DistributionGroup' -splat $setDistributionGroupParams -ExchangeOrganization $TargetExchangeOrganization
-                Write-OneShellLog -Message $message -EntryType Succeeded
-                foreach ($pa in $DesiredProxyAddresses) {
-                    $type = $pa.split(':')[0]
-                    if ($type -in 'SMTP','x500')
+                    $message = "Find Newly Created Group $desiredAlias"
+                    $found = $false
+                    Do
                     {
-                        Add-ExchangeProxyAddressToTestExchangeProxyAddress -ProxyAddress $pa -ProxyAddressType $type -ObjectGUID $newgroup.guid.guid
+                        #Write-OneShellLog -Message $message -EntryType Attempting
+                        $group = @(Invoke-Command -ScriptBlock {Get-DistributionGroup -Identity $($using:NewGroup).guid.guid -ErrorAction SilentlyContinue} -Session $TargetExchangeOrganizationSession -ErrorAction SilentlyContinue)
+                        if ($group.Count -eq 1)
+                        {
+                            Write-OneShellLog -Message $message -EntryType Succeeded
+                            $found = $true
+                        }
+                        Start-Sleep -Seconds 1
                     }
+                    Until
+                    ($found -eq $true)
+                    $message = "Set Group $desiredAlias Attributes"
+                    $setDistributionGroupParams =
+                    @{
+                        Identity = $newgroup.guid.guid
+                        #EmailAddresses = $DesiredProxyAddresses
+                        EmailAddressPolicyEnabled = $false
+                        errorAction = 'Stop'
+                    }
+                    Write-OneShellLog -Message $message -EntryType Attempting
+                    Invoke-Command -ScriptBlock {Set-DistributionGroup @using:setDistributionGroupParams} -Session $TargetExchangeOrganizationSession
+                    Write-OneShellLog -Message $message -EntryType Succeeded
+                    Write-OneShellLog -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose
                 }
-                Add-ExchangeAliasToTestExchangeAlias -Alias $desiredAlias -ObjectGUID $newgroup.guid.guid
-                Write-OneShellLog -Message "Provisioning Complete for Group $desiredAlias." -EntryType Notification -Verbose
-            }
-            catch
-            {
-                Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
-                Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
-            }
-            #endregion ProvisionDistributionGroup
+                catch
+                {
+                    Write-OneShellLog -Message $message -EntryType Failed -ErrorLog -Verbose
+                    Write-OneShellLog -Message $_.tostring() -ErrorLog -Verbose
+                }
+                #endregion ProvisionDistributionGroup
             }#else
         }#foreach
-        if ($TestOnly)
-        {}
-        else
-        {
-            if ($RefreshRecipientMaps)
-            {
-                New-SourceTargetRecipientMap -SourceRecipients $sourceRecipients -TargetExchangeOrganization $TargetExchangeOrganization -OutVariable RecipientMaps
-            }
-        }#else
-        #$Global:TheLocalVariables = Get-Variable -Scope Local
     }
 #end function Publish-Groups
 function Get-GroupMemberMapping

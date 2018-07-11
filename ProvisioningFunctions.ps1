@@ -23,6 +23,7 @@ function Get-DesiredTargetAlias
             [string]$NewPrefix
             ,
             [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
+            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
             [switch]$PrefixOnlyIfNecessary
 
         )
@@ -35,7 +36,9 @@ function Get-DesiredTargetAlias
                 $NewAlias = $Alias -replace "\b$($sourcePrefix)_",''
                 $NewAlias = $NewAlias -replace "\b$($SourcePrefix)", ''
                 $NewAlias = $NewAlias -replace "$($SourcePrefix)\b", ''
-                $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
+                if ($false -eq $PrefixOnlyIfNecessary) {
+                    $NewAlias = "$($ReplacementPrefix)_$($NewAlias)"
+                }
                 $Alias = $NewAlias
             }
             'NewPrefix'
@@ -77,7 +80,7 @@ function Get-DesiredTargetName
         [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
         $SourceName
         ,
-        [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
+        [parameter(ParameterSetName = 'ReplacePrefix')]
         [string]$ReplacementPrefix
         ,
         [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
@@ -95,7 +98,8 @@ function Get-DesiredTargetName
                 $NewName = $Name -replace "\b$($sourcePrefix)_",''
                 $NewName = $NewName -replace "\b$($SourcePrefix)", ''
                 $NewName = $NewName -replace "$($SourcePrefix)\b", ''
-                $NewName = "$($ReplacementPrefix)_$($NewName)"
+                if ($null -ne $ReplacementPrefix -and -not [string]::IsNullOrEmpty($ReplacementPrefix))
+                {$NewName = "$($ReplacementPrefix)_$($NewName)"}
                 $Name = $NewName.Trim()
             }
             'NewPrefix'
