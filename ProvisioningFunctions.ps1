@@ -29,6 +29,7 @@ function Get-DesiredTargetAlias
         )
         $Alias = $SourceAlias
         $Alias = $Alias -replace '\s|[^.0-9a-zA-Z_-]|\.$',''
+        $Alias = $Alias -replace '\*',''
         switch ($PSCmdlet.ParameterSetName)
         {
             'ReplacePrefix'
@@ -201,6 +202,7 @@ function New-ResourceMailboxIntermediateObject
                     PrefixOnlyIfNecessary = $PrefixOnlyIfNecessary
                 }
                 $DesiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
+                $Prefixed = $($DesiredAlias -like "$($NewPrefix + '_*')")
                 Write-OneShellLog -Message $message -EntryType Succeeded -Verbose
                 Write-OneShellLog -Message "New Alias for $FriendlyIdentity is $DesiredAlias" -EntryType Notification -Verbose
             }
@@ -345,19 +347,20 @@ function New-ResourceMailboxIntermediateObject
             }
             $message = "Build Intermediate Object to use for creation of target object for $FriendlyIdentity"
             Write-OneShellLog -Message $message -EntryType Notification
-            $SAMLength = [math]::Min($desiredAlias.length,20)
+            $SAMLength = [math]::Min($desiredAlias.length,15)
             $IntermediateObject=[pscustomobject]@{
                 #msExchPoliciesExcluded = '{26491cfc-9e50-4857-861b-0cb8df22b5d7}'
                 #msExchMailboxGUID = $($r.ExchangeGuid)
                 Mail = $DesiredNewProxyAddress
                 TargetAddress = 'SMTP:' + $DesiredTargetAddress
                 mailNickName = $DesiredAlias
-                SamAccountName = $DesiredAlias.substring(0,$SAMLength)
+                SamAccountName = $DesiredAlias.substring(0,$SAMLength) + $r.ObjectGUID.Guid.substring(0,5)
                 proxyaddresses = [string[]]$DesiredAddresses
                 Name = $DesiredName
                 DisplayName = $DesiredDisplayName
                 UserPrincipalName = $DesiredNewProxyAddress
                 SourceIdentity = $FriendlyIdentity
+                SourceObjectType = $r.ObjectClass
                 employeeType = 'Resource'
                 description = "Resource: $RTD"
                 ResourceType = $RTD
@@ -368,6 +371,7 @@ function New-ResourceMailboxIntermediateObject
                 c = 'US'
                 co = 'United States'
                 extensionattribute5 = $r.ObjectGuid.Guid
+                Prefixed = $Prefixed
             }
             Write-Output -InputObject $IntermediateObject
         }
