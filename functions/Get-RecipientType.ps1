@@ -1,5 +1,5 @@
-function Get-RecipientType
-    {
+﻿    Function Get-RecipientType {
+        
         [cmdletbinding()]
         param
         (
@@ -116,103 +116,5 @@ function Get-RecipientType
                 $msExchRemoteRecipientTypeTypes | Where-object -FilterScript {$_.Value -eq $msExchRemoteRecipientType}
             }
         }
+    
     }
-#end function Get-RecipientType
-function Get-msExchRecipientDisplayTypeValue
-    {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(Mandatory)]
-            [string]$RecipientTypeDetails
-        )
-        switch ($RecipientTypeDetails)
-        {
-            'LinkedMailbox' {$Value = 1073741824}
-            'RemoteRoomMailbox'{$value = -2147481850}
-            'RemoteSharedMailbox' {$value = -2147483642}
-            'RemoteUserMailbox' {$value = -2147483642}
-            'RemoteEquipmentMailbox' {$value = -2147481594}
-            'RoomMailbox' {$value = 7}
-            'SharedMailbox' {$value = 1073741824}
-            'DiscoveryMailbox' {$value = $null}
-            'ArbitrationMailbox' {$value = $null}
-            'UserMailbox' {$value = 1073741824}
-            'LegacyMailbox' {$value = $null}
-            'EquipmentMailbox' {$value = 8}
-            'MailContact' {$value = 6}
-            'MailForestContact' {$value = $null}
-            'MailUser' {$value = 6}
-            'MailUniversalDistributionGroup' {$value = 1}
-            'MailUniversalSecurityGroup' {$value = 1073741833}
-            'DynamicDistributionGroup' {$value = 3}
-            'PublicFolder' {$value = 2}
-        }
-        $Value
-    }
-#end function Get-msExchRecipientDisplayTypeValue
-function Get-msExchRecipientTypeDetailsValue
-    {
-        [cmdletbinding()]
-        param(
-            [parameter(Mandatory)]
-            [string]$RecipientTypeDetails
-        )
-        switch ($RecipientTypeDetails)
-        {
-            'LinkedMailbox' {$Value = 2}
-            'RemoteRoomMailbox'{$value = 8589934592}
-            'RemoteSharedMailbox' {$value = 34359738368}
-            'RemoteUserMailbox' {$value = 2147483648}
-            'RemoteEquipmentMailbox' {$value = 17173869184}
-            'RoomMailbox' {$value = 16}
-            'SharedMailbox' {$value = 4}
-            'DiscoveryMailbox' {$value = 536870912}
-            'ArbitrationMailbox' {$value = 536870912}
-            'UserMailbox' {$value = 1}
-            'LegacyMailbox' {$value = 8}
-            'EquipmentMailbox' {$value = 32}
-            'MailContact' {$value = 64}
-            'MailForestContact' {$value = 32768}
-            'MailUser' {$value = 128}
-            'MailUniversalDistributionGroup' {$value = 256}
-            'MailUniversalSecurityGroup' {$value = 1024}
-            'DynamicDistributionGroup' {$value = 2048}
-            'PublicFolder' {$value = 4096}
-        }
-        Write-Output -InputObject $Value
-    }
-#end function Get-msExchRecipientTypeDetailsValue
-function Get-msExchRemoteRecipientTypeValue
-    {
-        [cmdletbinding()]
-        param
-        (
-            [parameter(Mandatory)]
-            [string]$RecipientTypeDetails
-        )
-        switch ($RecipientTypeDetails)
-        {
-            'LinkedMailbox' {$Value = $null}
-            'RemoteRoomMailbox'{$value = 36}
-            'RemoteSharedMailbox' {$value = 100}
-            'RemoteUserMailbox' {$value = 4}
-            'RemoteEquipmentMailbox' {$value = 68}
-            'RoomMailbox' {$value = 32}
-            'SharedMailbox' {$value = 96}
-            'DiscoveryMailbox' {$value = $null}
-            'ArbitrationMailbox' {$value = $null}
-            'UserMailbox' {$value = $null}
-            'LegacyMailbox' {$value = $null}
-            'EquipmentMailbox' {$value = 64}
-            'MailContact' {$value = $null}
-            'MailForestContact' {$value = $null}
-            'MailUser' {$value = $null}
-            'MailUniversalDistributionGroup' {$value = $null}
-            'MailUniversalSecurityGroup' {$value = $null}
-            'DynamicDistributionGroup' {$value = $null}
-            'PublicFolder' {$value = $null}
-        }
-        Write-Output -InputObject $Value
-    }
-#end function Get-msExchRemoteRecipientTypeValue
