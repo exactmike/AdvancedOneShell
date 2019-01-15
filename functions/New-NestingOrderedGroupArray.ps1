@@ -37,12 +37,12 @@
                         )
                         if ($Tests -notcontains $true)
                         {
-                            $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
-                            $OutputGroups.$($Group.DistinguishedName) = $Group
-                            Write-Verbose -Message "Nesting Level $NestingLevel; added Group $($Group.DistinguishedName) to Output"
+                            $group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
+                            $OutputGroups.$($group.DistinguishedName) = $group
+                            Write-Verbose -Message "Nesting Level $NestingLevel; added Group $($group.DistinguishedName) to Output"
                         }
                     }
-                    elseif ($NestingLevel -ge 1 -and $Group.memberof.Count -ge 1)
+                    elseif ($NestingLevel -ge 1 -and $group.memberof.Count -ge 1)
                     {
                         $Tests = @(
                             foreach ($mo in $group.MemberOf)
@@ -57,7 +57,6 @@
                                             if  ($group.DistinguishedName -in $GroupsDNHash.$mo.MemberOf)
                                             {
                                                 Write-Warning -Message "Found Mutually Nested groups $($group.DistinguishedName) and $mo"
-                                                $group.MemberOf.Remove($mo)
                                                 $group.BadMemberOf += $mo
                                                 $true    
                                             }
@@ -77,12 +76,19 @@
                                     }
                                 }
                             }    
+                            if ($group.BadMemberOf.count -ge 1)
+                            {
+                                foreach ($bmo in $group.BadMemberOf)
+                                {
+                                    $group.MemberOf.Remove($bmo)
+                                }
+                            }
                         )
                         if ($Tests -notcontains $false)
                         {
                             #add the group to the output at the current nesting level
-                            $Group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
-                            $OutputGroups.$($group.DistinguishedName) = $Group
+                            $group | Add-Member -MemberType NoteProperty -Name NestingLevel -Value $NestingLevel
+                            $OutputGroups.$($group.DistinguishedName) = $group
                             Write-Verbose -Message "Nesting Level $NestingLevel; added Group $($Group.DistinguishedName) to Output"
                         }
                     }
