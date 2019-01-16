@@ -26,10 +26,14 @@
             [string[]]$AddressesToRemove #specify the complete address including the type: prefix, like smtp: or x500:
             ,
             [string[]]$AddressesToAdd #specifcy the complete address including the type: prefix, like smtp: or x500:
+            ,
+            [switch]$TestAddressAvailability
+            ,
+            $TestAddressExchangeOrganizationSession
         )
         if ($PSBoundParameters.ContainsKey('CurrentProxyAddresses'))
         {
-            $DesiredProxyAddresses = $CurrentProxyAddresses.Clone()
+            $DesiredProxyAddresses = $CurrentProxyAddresses.Clone() | Select-Object -Unique
         }
         else
         {
@@ -135,6 +139,7 @@
                     throw('Multiple Primary SMTP addresses detected: Invalid Configuration')
                 }
             }#end switch
+
         }#end if
         if ($VerifySMTPAddressValidity -eq $true)
         {
@@ -161,6 +166,33 @@
                 $DesiredProxyAddresses = $DesiredProxyAddresses | Where-Object {$_ -notin $AddressesToRemove}
             }
         }
-        $DesiredProxyAddresses
-    
+        if ($true -eq $TestAddressAvailability)
+        {
+            $Passed = @()
+            $Failed = @()
+            foreach ($dpa in $DesiredProxyAddresses)
+            {
+                switch (Test-ExchangeProxyAddress -ProxyAddress $dpa -ProxyAddressType SMTP -ExchangeSession $TestAddressExchangeOrganizationSession)
+                {
+                    $true
+                    {
+                        $Passed += $dpa
+                    }
+                    $false
+                    {
+                        $Failed += $dpa
+                    }
+                }
+            }
+            $DesiredProxyAddresses = $Passed
+        }
+        $DesiredProxyAddresses = @($DesiredProxyAddresses | Select-Object -Unique)
+        #test for one Primary
+        $PrimaryCount = @($DesiredProxyAddresses | Where-object {$_ -clike 'SMTP:*'}).Count
+        if ($PrimaryCount -ne 1)
+        {throw ("$PrimaryCount Primary Addresses Generated")}
+        else
+        {
+            $DesiredProxyAddresses
+        }
     }

@@ -26,6 +26,10 @@
         [switch]$RefreshRecipientMaps
         ,
         [switch]$HideContacts
+        ,
+        [switch]$CreateContacts
+        ,
+        $RequireSenderAuthenticationEnabledLookup
         )
         Connect-OneShellSystem -Identity $TargetExchangeOrganization -ErrorAction Stop
         $TargetExchangeOrganizationSession = Get-OneShellSystemPSSession -Identity $TargetExchangeOrganization
@@ -40,7 +44,14 @@
             $csgCount++
             Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
         #region Prepare
-            $desiredAlias = Get-DesiredTargetAlias -SourceAlias $sg.mailNickName -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -ReplacementPrefix $ReplacementPrefix -SourcePrefix $SourcePrefix -PrefixOnlyIfNecessary
+            $GetDesiredTargetAliasParams = @{
+                sourceAlias = $sg.mailNickName
+                TargetExchangeOrganizationSession = $TargetExchangeOrganizationSession
+                ReplacementPrefix = $ReplacementPrefix
+                SourcePrefix = $SourcePrefix
+            }
+            if ($true -eq $PrefixOnlyIfNecessary) {$GetDesiredTargetAliasParams.PrefixOnlyIfNecessary = $true}
+            $desiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
             Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
             $WriteProgressParams =
             @{
@@ -49,20 +60,29 @@
                 CurrentOperation = $desiredAlias
                 PercentComplete = $csgCount/$sgCount*100
             }
-            if ($csgCount -gt 1){$WriteProgressParams.SecondsRemaining = ($($stopwatch.Elapsed.TotalSeconds.ToInt32($null))/($csgCount - 1)) * ($sgCount - ($csgCount - 1))}
-            Write-Progress @WriteProgressParams
-            $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress -DesiredAlias $desiredAlias -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession -TargetSMTPDomain $TargetSMTPDomain
+            if ($csgCount -gt 1 -and ($csgCount % 10) -eq 0)
+            {
+                $WriteProgressParams.SecondsRemaining = ($($stopwatch.Elapsed.TotalSeconds.ToInt32($null))/($csgCount - 1)) * ($sgCount - ($csgCount - 1))
+                Write-Progress @WriteProgressParams
+            }
+            $GetDesiredPrimarySMTPAddressParams = @{
+                DesiredAlias = $desiredAlias
+                TargetExchangeOrganizationSession = $TargetExchangeOrganizationSession 
+                TargetSMTPDomain = $TargetSMTPDomain
+            }
+            $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress @GetDesiredPrimarySMTPAddressParams
             $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName  -SourcePrefix $SourcePrefix #-ReplacementPrefix $ReplacementPrefix
             $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
             $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -ExchangeSession $TargetExchangeOrganizationSession
             $GetDesiredProxyAddressesParams = @{
-                #CurrentProxyAddresses = $sg.proxyAddresses
+                CurrentProxyAddresses = $sg.proxyAddresses | Where-Object {$_ -like 'smtp:*'} | ForEach-Object {$($_.split('@')[0]) + '@' + $TargetSMTPDomain}
                 DesiredPrimaryAddress = $desiredPrimarySMTPAddress
                 DesiredOrCurrentAlias = $desiredAlias
                 #Recipients = $targetRecipients
                 #LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
             }
-            $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams
+            $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams -TestAddressAvailability -TestAddressExchangeOrganizationSession $TargetExchangeOrganizationSession
+            $OriginalPrimarySMTPAddress = $sg.proxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | Select-Object -First 1 | ForEach-Object {$_.split(':')[1]}
         #endregion Prepare
         #region GetAndMapGroupMembers
             $AllSourceMembers =@($sg.Members | foreach {if ($SourceRecipientDNHash.ContainsKey($_)) {$SourceRecipientDNHash.$($_)}})
@@ -77,6 +97,7 @@
             $nonMappedTargetMemberGroups = @($AllSourceGroupMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
             $nonMappedTargetMemberUsers = @($AllSourceUserMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
             $nonMappedTargetMemberContacts = @($AllSourceContactMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
+            $ManagedBy = Get-TargetManagedBy -SourceGroup $sg -MappedTargetMemberUsers $mappedTargetMemberUsers -SourceRecipientDNHash $SourceRecipientDNHash -SourceTargetRecipientMap $SourceTargetRecipientMap -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession
         #endregion GetAndMapGroupMembers
         #region IntermediateGroupObject
             $intermediateGroupObject =
@@ -96,6 +117,10 @@
                 NonMappedMemberGroups = @($nonMappedTargetMemberGroups | Select-Object -ExpandProperty DistinguishedName)
                 SourcePublicFolderMembers = @($AllSourcePublicFolderMembers | Select-Object -ExpandProperty Mail)
                 SourceObject = $sg
+                ManagedBy = $ManagedBy.ManagedBy
+                ManagedBySource = $ManagedBy.ManagedBySource
+                SourcePrimarySMTPAddress = $OriginalPrimarySMTPAddress
+                SourceRequireSenderAuthenticationEnabled = $RequireSenderAuthenticationEnabledLookup.$OriginalPrimarySMTPAddress
             }
             $Global:intermediateGroupObjects += $intermediateGroupObject
             Export-OneShellData -DataToExportTitle $("Group-" + $DesiredAlias) -DataToExport $intermediateGroupObject -Depth 3 -DataType json
