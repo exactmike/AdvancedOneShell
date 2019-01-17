@@ -4,12 +4,14 @@
     param
     (
         [parameter()]
+        [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
         [string[]]$CurrentProxyAddresses #Current proxy addresses to preserve or evaluate for preservation
         ,
         [parameter()]
         [ValidateScript({$_ -clike 'SMTP:*'})]
         [string]$DesiredPrimarySMTPAddress #replace existing primary smtp address with this value
         ,
+        [parameter()]
         [string]$DesiredOrCurrentAlias #used for calculation of a TargetAddress if required.
         ,
         [parameter()]
@@ -36,11 +38,11 @@
         [string[]]$DomainsToAdd #specify the domains for which to remove the associated proxy addresses. Include only the domain name, like 'contoso.com'
         ,
         [parameter()]
-        [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false}]
+        [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
         [string[]]$AddressesToRemove #specify the complete address including the type: prefix, like smtp: or x500:
         ,
         [parameter()]
-        [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false}]
+        [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
         [string[]]$AddressesToAdd #specifcy the complete address including the type: prefix, like smtp: or x500:
         ,
         [switch]$VerifySMTPAddressValidity #verifies that the SMTP address complies with basic format requirements to be valid. See documentation for Test-EmailAddress for more information.
@@ -50,35 +52,29 @@
         [switch]$TestAddressAvailabilityInExchangeSession
     )
     #parameter validation(s)
-    if (($PSBoundParameters.ContainsKey('AddTargetSMTPAddress') -or $PSBoundParameters.ContainsKey('VerifyTargetSMTPAddress') -or $PSBoundParameters.ContainsKey('AddPrimarySMTPAddressForAlias')) -and -not $PSBoundParameters.ContainsKey('DesiredOrCurrentAlias'))
+    if (($true -eq $AddTargetSMTPAddress -or $true -eq $VerifyTargetSMTPAddress -or $true -eq $AddPrimarySMTPAddressForAlias) -and -not $PSBoundParameters.ContainsKey('DesiredOrCurrentAlias'))
     {
         throw('Parameters AddTargetSMTPAddressForAlias, VerifyTargetSMTPAddress, and AddPrimarySMTPAddressForAlias require a value for Parameter DesiredOrCurrentAlias. Please provide a value for parameter DesiredOrCurrentAlias and try again.')
         return $null
     }
-    if ($PSBoundParameters.ContainsKey('AddPrimarySMTPAddressForAlias') -and -not $PSBoundParameters.ContainsKey('PrimarySMTPDomain'))
+    if ($true -eq $AddPrimarySMTPAddressForAlias -and -not $PSBoundParameters.ContainsKey('PrimarySMTPDomain'))
     {
         throw('Parameter AddPrimarySMTPAddressForAlias required a value for Parameter PrimarySMTPDomain. Please provide a value for parameter PrimarySMTPDomain and try again.')
         return $null
     }
-    if (($PSBoundParameters.ContainsKey('AddTargetSMTPAddressForAlias') -or $PSBoundParameters.ContainsKey('VerifyTargetSMTPAddress')) -and -not $PSBoundParameters.ContainsKey('TargetDeliverySMTPDomain'))
+    if (($true -eq $AddTargetSMTPAddressForAlias -or $true -eq $VerifyTargetSMTPAddress) -and -not $PSBoundParameters.ContainsKey('TargetDeliverySMTPDomain'))
     {
         throw('Parameters AddTargetSMTPAddressForAlias or VerifyTargetSMTPAddress require a value for Parameter TargetDeliverySMTPDomain. Please provide a value for parameter TargetDeliverySMTPDomain and try again.')
         return $null
     }
-    # Gather All Addresses From Input
+    if ($PSBoundParameters.ContainsKey('DomainsToAdd') -and -not $PSBoundParameters.ContainsKey('DesiredorCurrentAlias'))
+    {
+        throw('Parameter DomainsToAdd requires a value for Parameter DesiredOrCurrentAlias. Please provide a value for parameter DesiredOrCurrentAlias and try again.')
+        return $null
+    }
+    # First Add all specified/requested addresses
     $AllIncomingProxyAddresses = New-Object System.Collections.ArrayList
     if ($PSBoundParameters.ContainsKey('CurrentProxyAddresses'))
-    {
-        foreach ($cpa in $CurrentProxyAddresses)
-        {
-            if ($null -eq $cpa.split(':')[1] -and $null -ne $cpa.split('@')[1])
-            {
-                $cpa = 'smtp:' + $cpa
-            }
-            $null = $AllIncomingProxyAddresses.Add($cpa)
-        }
-    }
-    if ($PSBoundParameters.ContainsKey('DesiredPrimarySMTPAddress'))
     {
         foreach ($cpa in $CurrentProxyAddresses)
         {
@@ -154,7 +150,7 @@
         $existingdomains = @($AllIncomingProxyAddresses | ForEach-Object {$_.split('@')[1]} | Select-Object -Unique)
         if ($TargetDeliverySMTPDomain -notin $existingdomains)
         {
-            $NewTargetDeliverySMTPAddress = 'smtp:' + $DesiredOrCurrentAlias + '@' + $TargetDeliverySMTPDomain
+            [string]$NewTargetDeliverySMTPAddress = 'smtp:' + $DesiredOrCurrentAlias + '@' + $TargetDeliverySMTPDomain
             $AllIncomingProxyAddresses.Add($NewTargetDeliverySMTPAddress)
         }
     }#if
@@ -163,33 +159,29 @@
         $NewTargetDeliverySMTPAddress = 'smtp:' + $DesiredOrCurrentAlias + '@' + $TargetDeliverySMTPDomain
         $AllIncomingProxyAddresses.Add($NewTargetDeliverySMTPAddress)
     }#if
-
-    if ($PSBoundParameters.ContainsKey('DesiredPrimaryAddress'))
+    if ($DomainsToAdd.count -ge 1)
     {
-        $currentPrimary = @($DesiredProxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | ForEach-Object {$_.split(':')[1]})
-        switch ($currentPrimary.count)
+        foreach ($d in $DomainsToAdd)
         {
-            1
+            [string]$newSMTPAddress = 'smtp:' + $DesiredOrCurrentAlias + '@' + $d
+            $null = $AllIncomingProxyAddresses.Add($cpa)
+        }
+    }
+    if ($PSBoundParameters.ContainsKey('DesiredPrimarySMTPAddress') -or $PSBoundParameters.ContainsKey('PrimarySMTPDomain') -or $true -eq $AddPrimarySMTPAddressForAlias)
+    {
+        if ($PSBoundParameters.ContainsKey('DesiredPrimarySMTPAddress'))
+        {
+            if ($AllIncomingProxyAddresses -inotcontains $DesiredPrimarySMTPAddress)
             {
-                if (-not $currentPrimary[0] -ceq $DesiredPrimaryAddress)
-                {
-                    $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "smtp:$DesiredPrimaryAddress"})
-                    $DesiredProxyAddresses = @($DesiredProxyAddresses | where-object {$_ -notlike "SMTP:$($currentPrimary[0])"})
-                    $DesiredProxyAddresses += $("smtp:$($currentPrimary[0])")
-                    $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
-                }
-            }#end 1
-            0
-            {
-                $DesiredProxyAddresses += $("SMTP:$DesiredPrimaryAddress")
+                $AllIncomingProxyAddresses.Add($DesiredPrimarySMTPAddress)
             }
-            {$_ -ge 2}
+            elseif (@($AllIncomingProxyAddresses | ForEach-Object {$_.tolower()} -ccontains $DesiredPrimarySMTPAddress.ToLower())
             {
-                throw('Multiple Primary SMTP addresses detected: Invalid Configuration')
+                #do until it's gone then put back in
             }
-        }#end switch
+        }
+    }
 
-    }#end if
     if ($VerifySMTPAddressValidity -eq $true)
     {
         $SMTPProxyAddresses = @($DesiredProxyAddresses | Where-Object {$_ -ilike 'smtp:*'})
