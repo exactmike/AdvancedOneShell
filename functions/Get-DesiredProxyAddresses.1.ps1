@@ -175,9 +175,14 @@
             {
                 $AllIncomingProxyAddresses.Add($DesiredPrimarySMTPAddress)
             }
-            elseif (@($AllIncomingProxyAddresses | ForEach-Object {$_.tolower()} -ccontains $DesiredPrimarySMTPAddress.ToLower())
+            elseif (@($AllIncomingProxyAddresses | ForEach-Object {$_.tolower()} -ccontains $DesiredPrimarySMTPAddress.ToLower()) -contains $true)
             {
                 #do until it's gone then put back in
+                do
+                {
+                    $AllIncomingProxyAddresses.Remove($DesiredPrimarySMTPAddress)
+                }
+                Until (@($AllIncomingProxyAddresses | ForEach-Object {$_.tolower()} -ccontains $DesiredPrimarySMTPAddress.ToLower()) -notcontains $true)
             }
         }
     }
