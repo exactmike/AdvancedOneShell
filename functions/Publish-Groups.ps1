@@ -42,7 +42,8 @@
         foreach ($sg in $SourceGroups)
         {
             $csgCount++
-            Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
+            #Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
+            #Write-Verbose -Message "Processing Source Group $($sg.mailnickname)" -Verbose
         #region Prepare
             $GetDesiredTargetAliasParams = @{
                 sourceAlias = $sg.mailNickName
@@ -51,8 +52,9 @@
                 SourcePrefix = $SourcePrefix
             }
             if ($true -eq $PrefixOnlyIfNecessary) {$GetDesiredTargetAliasParams.PrefixOnlyIfNecessary = $true}
+            Connect-OneShellSystem -Identity $TargetExchangeOrganization
             $desiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
-            Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
+            #Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
             $WriteProgressParams =
             @{
                 Activity = "Provisioning $($SourceGroups.count) Groups into $TargetExchangeOrganization, $TargetGroupOU"
@@ -70,18 +72,19 @@
                 TargetExchangeOrganizationSession = $TargetExchangeOrganizationSession 
                 TargetSMTPDomain = $TargetSMTPDomain
             }
-            $desiredPrimarySMTPAddress = Get-DesiredTargetPrimarySMTPAddress @GetDesiredPrimarySMTPAddressParams
+            Connect-OneShellSystem -Identity $TargetExchangeOrganization
+            $desiredPrimarySMTPAddress = 'SMTP:' + $(Get-DesiredTargetPrimarySMTPAddress @GetDesiredPrimarySMTPAddressParams)
             $desiredName = Get-DesiredTargetName -SourceName $sg.DisplayName  -SourcePrefix $SourcePrefix #-ReplacementPrefix $ReplacementPrefix
             $targetRecipientGUIDs = @($RecipientMaps.SourceTargetRecipientMap.$($sg.ObjectGUID.Guid))
             $targetRecipients = Get-TargetRecipientFromMap -SourceObjectGUID $($sg.ObjectGUID.Guid) -ExchangeSession $TargetExchangeOrganizationSession
             $GetDesiredProxyAddressesParams = @{
                 CurrentProxyAddresses = $sg.proxyAddresses | Where-Object {$_ -like 'smtp:*'} | ForEach-Object {$($_.split('@')[0]) + '@' + $TargetSMTPDomain}
-                DesiredPrimaryAddress = $desiredPrimarySMTPAddress
-                DesiredOrCurrentAlias = $desiredAlias
-                #Recipients = $targetRecipients
-                #LegacyExchangeDNs = $targetRecipients | Select-Object -ExpandProperty LegacyExchangeDN
+                DesiredPrimarySMTPAddress = $desiredPrimarySMTPAddress
+                TestAddressAvailabilityInExchangeSession = $true
+                ExchangeSession = $TargetExchangeOrganizationSession
             }
-            $DesiredProxyAddresses = Get-DesiredProxyAddresses @GetDesiredProxyAddressesParams -TestAddressAvailability -TestAddressExchangeOrganizationSession $TargetExchangeOrganizationSession
+            Connect-OneShellSystem -Identity $TargetExchangeOrganization
+            $DesiredProxyAddresses = Get-AltDesiredProxyAddresses @GetDesiredProxyAddressesParams
             $OriginalPrimarySMTPAddress = $sg.proxyAddresses | Where-Object {$_ -clike 'SMTP:*'} | Select-Object -First 1 | ForEach-Object {$_.split(':')[1]}
         #endregion Prepare
         #region GetAndMapGroupMembers
@@ -97,6 +100,7 @@
             $nonMappedTargetMemberGroups = @($AllSourceGroupMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
             $nonMappedTargetMemberUsers = @($AllSourceUserMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
             $nonMappedTargetMemberContacts = @($AllSourceContactMembers | Where-Object {$RecipientMaps.SourceTargetRecipientMap.$($_.ObjectGUID.guid) -eq $null})
+            Connect-OneShellSystem -Identity $TargetExchangeOrganization
             $ManagedBy = Get-TargetManagedBy -SourceGroup $sg -MappedTargetMemberUsers $mappedTargetMemberUsers -SourceRecipientDNHash $SourceRecipientDNHash -SourceTargetRecipientMap $SourceTargetRecipientMap -TargetExchangeOrganizationSession $TargetExchangeOrganizationSession
         #endregion GetAndMapGroupMembers
         #region IntermediateGroupObject
@@ -134,7 +138,7 @@
                 foreach ($tr in $targetRecipients)
                 {
                     $message = "Remove target recipient $($tr.Alias) for Group $DesiredAlias"
-                    Connect-Exchange -ExchangeOrganization $TargetExchangeOrganization
+                    Connect-OneShellSystem -Identity $TargetExchangeOrganization
                     $cmdlet = Get-RecipientCmdlet -Recipient $tr -verb Remove
                     $rrParams =
                     @{
@@ -263,6 +267,7 @@
                 }
                 try
                 {
+                    Connect-OneShellSystem -Identity $TargetExchangeOrganization
                     $message = "Create Group $desiredAlias"
                     Write-OneShellLog -Message $message -EntryType Attempting
                     $newgroup = Invoke-Command -ScriptBlock {New-DistributionGroup @using:newDistributionGroupParams} -Session $TargetExchangeOrganizationSession -ErrorAction Stop

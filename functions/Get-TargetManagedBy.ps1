@@ -15,20 +15,23 @@ function Get-TargetManagedBy
     )
     $TargetManagedBy = $(
         #Test if ManagedBy Exists in the Exported Recipients
-        if  ($SourceRecipientDNHash.ContainsKey($sg.ManagedBy)) 
+        if  ($null -ne $sg.ManagedBy -and $SourceRecipientDNHash.ContainsKey($sg.ManagedBy)) 
         {
             #Test if ManagedBy Exists in the Mapped Target Recipients
             $SourceManagedByGUID = $($SourceRecipientDNHash.$($sg.ManagedBy).ObjectGUID.guid) 
             if ($SourceTargetRecipientMap.ContainsKey($SourceManagedByGUID))
             {
                 $ObjectGUIDString = @($SourceTargetRecipientMap.$SourceManagedByGUID)[0]
-                try
+                if ($null -ne $ObjectGUIDString -and -not [string]::IsNullOrWhiteSpace($ObjectGUIDString))
                 {
-                    Invoke-Command -Session $TargetExchangeOrganizationSession -ScriptBlock {Get-Recipient -identity $using:ObjectGUIDString -erroraction Stop | Select-Object -ExpandProperty DistinguishedName} -ErrorAction Stop
-                }
-                catch
-                {
-                    $false
+                    try
+                    {
+                        Invoke-Command -Session $TargetExchangeOrganizationSession -ScriptBlock {Get-Recipient -identity $using:ObjectGUIDString | Select-Object -ExpandProperty DistinguishedName} -ErrorAction Stop
+                    }
+                    catch
+                    {
+                        $false
+                    }
                 }
             }
             else
@@ -53,10 +56,30 @@ function Get-TargetManagedBy
     {
         if ($MappedTargetMemberUsers.count -ge 1)
         {
-            $TargetManagedBy = Invoke-Command -Session $TargetExchangeOrganizationSession -ScriptBlock {$Using:MappedTargetMemberUsers | Get-Recipient -errorAction Stop | Sort-Object -Property PrimarySMTPAddress | Select-Object -First 1 -ExpandProperty DistinguishedName} 
-            $Result = @{
-                ManagedBy = $TargetManagedBy
-                ManagedBySource = 'Membership'
+            $TargetManagedBy = $(
+                @(
+                    foreach ($mtmu in $MappedTargetMemberUsers)
+                    {
+                        if ($null -ne $mtmu -and -not [string]::IsNullOrWhiteSpace($mtmu))
+                        {
+                            Invoke-Command -Session $TargetExchangeOrganizationSession -ScriptBlock {Get-Recipient -identity $using:mtmu}
+                        }
+                    } 
+                ) | Sort-Object -Property PrimarySMTPAddress | Select-Object -First 1 -ExpandProperty DistinguishedName     
+            )
+            if ($null -ne $TargetManagedBy)
+            {
+                $Result = @{
+                    ManagedBy = $TargetManagedBy
+                    ManagedBySource = 'Membership'
+                }
+            }
+            else
+            {
+                $Result = @{
+                    ManagedBy = $null
+                    ManagedBySource = $null
+                }
             }
         }
         else {

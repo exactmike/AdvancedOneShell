@@ -1,4 +1,4 @@
-﻿Set-StrictMode -Version Latest
+﻿#Set-StrictMode -Version Latest
 Function Get-AltDesiredProxyAddresses
 {
     [cmdletbinding()]
@@ -496,9 +496,3 @@ Function Get-AltDesiredProxyAddresses
     }
     $AllIncomingProxyAddresses
 }
-
-
-#Get-AltDesiredProxyAddresses -CurrentProxyAddresses 'X500:/o=NotReallyNeeded','x500:/o=webmd/ou=External (FYDIBOHF25SPDLT)/cn=Recipients/cn=846992148f6a4b0da7d6d0092dbdf5db','smtp:messagelabsdataprotection@emdeon.com','smtp:AMAIN@emdeon.mail.onmicrosoft.com','x500:/o=webmd/ou=Exchange Administrative Group (FYDIBOHF23SPDLT)/cn=Recipients/cn=Main, Andrew31e','X500:/o=ExchangeLabs/ou=Exchange Administrative Group (FYDIBOHF23SPDLT)/cn=Recipients/cn=553e77e80d224ef1a945ed561ac0226c-Main, Andre','smtp:andrewmain@emdeon.com','smtp:andrew.main@changehealthcare.com','smtp:anmain@emdeon.com','SMTP:anmain@changehealthcare.com','smtp:amain@changehealthcare.com','smtp:amain@patientbusinessoffice.com','smtp:amain@patientaccountsoffice.org','smtp:amain@chapinrcm.com','smtp:amain@chamberlinedmonds.com','smtp:amain@ce-a.com','smtp:amain@erxnetwork.com','smtp:maina@tc3health.com','smtp:amaintest@changehealthcare.com','smtp:amain@htms.com','smtp:amain1@htms.com','smtp:AMAIN317@emdeon.mail.onmicrosoft.com','smtp:anmain@equiclaim.com','smtp:anmain@ghsinc.com','smtp:amain@capario.com','smtp:anmain@myadvocatehelps.com','smtp:anmain@altegrahealth.com','smtp:amain@fvtech.com','smtp:amain@iadur.com','smtp:amain@iowamedicaidpdl.com','smtp:amain@iowamedicaidpos.com','smtp:amain@msmedicaidrxportal.com','smtp:amain@rxssdc.com','smtp:amain@sentinelgrouponline.com','smtp:relayer_testing@ce-a.com' -PrimarySMTPDomain 'emdeon.com' | Group-Object
-#Get-AltDesiredProxyAddresses -CurrentProxyAddresses 'smtp:user@contoso.com','SMTP:user.name@contoso.com','smtp:user@fabrikam.com' -PrimarySMTPDomain 'fabrikam'
-#Get-AltDesiredProxyAddresses -CurrentProxyAddresses 'smtp:user@contoso.com','SMTP:user.name@contoso.com','smtp:user@fabrikam.com' -PrimarySMTPDomain 'fabrikam.com' -AddressesToAdd 'SMTP:user@northwindtraders.com'
-Get-AltDesiredProxyAddresses -CurrentProxyAddresses 'smtp:user@contoso.com','SMTP:user.name@contoso.com','smtp:user@fabrikam.com' -AddressesToAdd 'SMTP:user@northwindtraders.com'
