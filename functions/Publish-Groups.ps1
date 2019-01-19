@@ -45,15 +45,22 @@
             #Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname)" -EntryType Notification
             #Write-Verbose -Message "Processing Source Group $($sg.mailnickname)" -Verbose
         #region Prepare
-            $GetDesiredTargetAliasParams = @{
-                sourceAlias = $sg.mailNickName
-                TargetExchangeOrganizationSession = $TargetExchangeOrganizationSession
-                ReplacementPrefix = $ReplacementPrefix
-                SourcePrefix = $SourcePrefix
+            Try
+            {
+                $GetDesiredTargetAliasParams = @{
+                    sourceAlias = $sg.mailNickName
+                    TargetExchangeOrganizationSession = $TargetExchangeOrganizationSession
+                    ReplacementPrefix = $ReplacementPrefix
+                    SourcePrefix = $SourcePrefix
+                }
+                if ($true -eq $PrefixOnlyIfNecessary) {$GetDesiredTargetAliasParams.PrefixOnlyIfNecessary = $true}
+                Connect-OneShellSystem -Identity $TargetExchangeOrganization
+                $desiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
             }
-            if ($true -eq $PrefixOnlyIfNecessary) {$GetDesiredTargetAliasParams.PrefixOnlyIfNecessary = $true}
-            Connect-OneShellSystem -Identity $TargetExchangeOrganization
-            $desiredAlias = Get-DesiredTargetAlias @GetDesiredTargetAliasParams
+            Catch
+            {
+                $desiredAlias = $(New-Guid).Guid
+            }
             #Write-OneShellLog -Message "Processing Source Group $($sg.mailnickname). Target Group alias will be $desiredAlias." -EntryType Notification
             $WriteProgressParams =
             @{
@@ -119,7 +126,7 @@
                 NonMappedMemberUsers = @($nonMappedTargetMemberUsers | Select-Object -ExpandProperty DistinguishedName)
                 NonMappedMemberContacts = @($nonMappedTargetMemberContacts | Select-Object -ExpandProperty DistinguishedName)
                 NonMappedMemberGroups = @($nonMappedTargetMemberGroups | Select-Object -ExpandProperty DistinguishedName)
-                SourcePublicFolderMembers = @($AllSourcePublicFolderMembers | Select-Object -ExpandProperty Mail)
+                #SourcePublicFolderMembers = @($AllSourcePublicFolderMembers | Select-Object -ExpandProperty Mail)
                 SourceObject = $sg
                 ManagedBy = $ManagedBy.ManagedBy
                 ManagedBySource = $ManagedBy.ManagedBySource
