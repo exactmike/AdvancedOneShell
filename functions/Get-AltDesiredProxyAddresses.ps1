@@ -6,6 +6,7 @@ Function Get-AltDesiredProxyAddresses
     (
         [parameter()]
         [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
+        [AllowEmptyCollection()]
         [string[]]$CurrentProxyAddresses #Current proxy addresses to preserve or evaluate for preservation
         ,
         [parameter()]
@@ -39,11 +40,13 @@ Function Get-AltDesiredProxyAddresses
         [string]$PrimarySMTPDomain #specify the Primary delivery domain - usually the main public name like 'contoso.com'
         ,
         [parameter()]
+        [AllowEmptyCollection()]
         [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
         [string[]]$AddressesToRemove #specify the complete address including the type: prefix, like smtp: or x500:
         ,
         [parameter()]
         [ValidateScript({@($_ | % {$_ -like '*:*'}) -notcontains $false})]
+        [AllowEmptyCollection()]
         [string[]]$AddressesToAdd #specifcy the complete address including the type: prefix, like smtp: or x500:
         ,
         [parameter()]
