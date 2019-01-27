@@ -8,10 +8,15 @@
             [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
             $SourceAlias
             ,
-            [parameter(ParameterSetName = 'NewPrefix',Mandatory=$true)]
-            [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-            [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
+            [parameter(ParameterSetName = 'NewPrefix')]
+            [parameter(ParameterSetName = 'Standard')]
+            [parameter(ParameterSetName = 'ReplacePrefix')]
             [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
+            ,
+            [parameter(ParameterSetName = 'NewPrefix')]
+            [parameter(ParameterSetName = 'Standard')]
+            [parameter(ParameterSetName = 'ReplacePrefix')]
+            [hashtable]$AliasHashtable
             ,
             [parameter(ParameterSetName = 'ReplacePrefix',Mandatory=$true)]
             [string]$ReplacementPrefix
@@ -46,7 +51,18 @@
             {
                 if ($PrefixOnlyIfNecessary -eq $true)
                 {
-                    if (-not (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession))
+                    $TestExchangeAliasParams = @{
+                        Alias = $Alias
+                    }
+                    if ($PSBoundParameters.ContainsKey('TargetExchangeOrganizationSession'))
+                    {
+                        $TestExchangeAliasParams.ExchangeSession = $TargetExchangeOrganizationSession
+                    }
+                    elseif ($PSBoundParameters.ContainsKey('AliasHashtable'))
+                    {
+                        $TestExchangeAliasParams.AliasHashtable = $AliasHashtable
+                    }
+                    if (-not (Test-ExchangeAlias @TestExchangeAliasParams))
                     {
                         $Alias = $NewPrefix + '_' + $Alias
                     }
@@ -61,13 +77,31 @@
                 $Alias = $SourceAlias
             }
         }
-        if (Test-ExchangeAlias -Alias $Alias -ExchangeSession $TargetExchangeOrganizationSession)
+        Try
         {
-            $Alias
+            $TestExchangeAliasParams = @{
+                Alias = $Alias
+            }
+            if ($PSBoundParameters.ContainsKey('TargetExchangeOrganizationSession'))
+            {
+                $TestExchangeAliasParams.ExchangeSession = $TargetExchangeOrganizationSession
+            }
+            elseif ($PSBoundParameters.ContainsKey('AliasHashtable'))
+            {
+                $TestExchangeAliasParams.AliasHashtable = $AliasHashtable
+            }
+            if (Test-ExchangeAlias @TestExchangeAliasParams)
+            {
+                $Alias
+            }
+            else
+            {
+                $(new-guid).guid
+                #throw "Desired Alias $Alias, derived from Source Alias $SourceAlias is not available."
+            }
         }
-        else
+        Catch
         {
-            throw "Desired Alias $Alias, derived from Source Alias $SourceAlias is not available."
-        }
-    
+            $(new-guid).guid            
+        }    
     }

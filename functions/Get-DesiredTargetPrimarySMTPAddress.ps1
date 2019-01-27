@@ -1,26 +1,55 @@
-﻿    Function Get-DesiredTargetPrimarySMTPAddress {
-        
-        [cmdletbinding()]
-        param
-        (
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
+﻿Function Get-DesiredTargetPrimarySMTPAddress
+{
+    [cmdletbinding(DefaultParameterSetName = 'Hashtable')]
+    param
+    (
+        [parameter(Mandatory)]
         $DesiredAlias
         ,
-        [parameter(ParameterSetName = 'Standard',Mandatory)]
+        [parameter(Mandatory)]
+        [string]$TargetSMTPDomain
+        ,
+        [parameter(ParameterSetName = 'ExchangeSession',Mandatory)]
         [System.Management.Automation.Runspaces.PSSession]$TargetExchangeOrganizationSession
         ,
-        [parameter(ParameterSetName = 'Standard',Mandatory=$true)]
-        [string]$TargetSMTPDomain
-        )
-        $DesiredPrimarySMTPAddress = $DesiredAlias + '@' + $TargetSMTPDomain
+        [parameter(Mandatory, ParameterSetName = 'Hashtable')]
+        [hashtable]$ProxyAddressHashtable
+    )
 
-        if (Test-ExchangeProxyAddress -ProxyAddress $DesiredPrimarySMTPAddress -ExchangeSession $TargetExchangeOrganizationSession -ProxyAddressType SMTP)
+    $DesiredPrimarySMTPAddress = $DesiredAlias + '@' + $TargetSMTPDomain
+    Try
+    {
+        switch ($PSCmdlet.ParameterSetName)
         {
-            $DesiredPrimarySMTPAddress
+            'ExchangeSession'
+            {
+                if (Test-ExchangeProxyAddress -ProxyAddress $DesiredPrimarySMTPAddress -ExchangeSession $TargetExchangeOrganizationSession -ProxyAddressType SMTP)
+                {
+                    $DesiredPrimarySMTPAddress
+                }
+                else
+                {
+                    $(new-guid).guid + '@' + $TargetSMTPDomain
+                }
+        
+            }
+            'Hashtable'
+            {
+                if (-not $ProxyAddressHashtable.ContainsKey($DesiredPrimarySMTPAddress))
+                {
+                    $DesiredPrimarySMTPAddress
+                }
+                else
+                {
+                    $(new-guid).guid + '@' + $TargetSMTPDomain
+                }
+        
+            }
         }
-        else
-        {
-            throw "Desired Primary SMTP Address $DesiredPrimarySMTPAddress is not available."
-        }
-    
     }
+    Catch
+    {
+        $(new-guid).guid + '@' + $TargetSMTPDomain
+    }
+
+}

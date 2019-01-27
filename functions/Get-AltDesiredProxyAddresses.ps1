@@ -71,6 +71,12 @@ Function Get-AltDesiredProxyAddresses
         ,
         [parameter()]
         [string[]]$TestAddressAvailabilityExemptGUID
+        ,
+        [parameter()]
+        [switch]$TestAddressAvailabilityInProxyAddressHashTable
+        ,
+        [parameter()]
+        [hashtable]$ProxyAddressHashtable
     )
     #parameter validation(s)
     if (($true -eq $AddTargetSMTPAddress -or $true -eq $VerifyTargetSMTPAddress -or $true -eq $AddPrimarySMTPAddressForAlias) -and -not $PSBoundParameters.ContainsKey('DesiredOrCurrentAlias'))
@@ -101,7 +107,10 @@ Function Get-AltDesiredProxyAddresses
     {
         foreach ($cpa in $CurrentProxyAddresses)
         {
-            $null = $AllIncomingProxyAddresses.Add($cpa)
+            if ($null -ne $cpa -and -not [string]::IsNullOrWhiteSpace($cpa))
+            {
+                $null = $AllIncomingProxyAddresses.Add($cpa)
+            }
         }
     }
     if ($PSBoundParameters.ContainsKey('LegacyExchangeDNs'))
@@ -363,7 +372,47 @@ Function Get-AltDesiredProxyAddresses
             {
                 $TestParams.ExemptObjectGUIDs = $TestAddressAvailabilityExemptGUID
             }
-            if (-not (Test-ExchangeProxyAddress @TestParams))
+            $TestResult = $(
+                Try
+                {
+                    Test-ExchangeProxyAddress @TestParams
+                }
+                Catch
+                {
+                    $False
+                }            
+            )
+            if ($false -eq $TestResult)
+            {
+                $AllIncomingProxyAddresses.Remove($i)
+            }
+        }
+    }
+    #Availability of smtp email address in a ProxyAddres HashTable
+    if ($true -eq $TestAddressAvailabilityInProxyAddressHashTable)  
+    {
+        foreach ($i in $($AllIncomingProxyAddresses | Where-Object -FilterScript {$_ -ilike 'smtp:*'}))
+        {
+            $TestParams = @{
+                ProxyAddress = $i
+                ProxyAddressType = 'SMTP'
+                ProxyAddressHashTable = $ProxyAddressHashtable
+            }
+            if ($PSBoundParameters.ContainsKey('TestAddressAvailabilityExemptGUID'))
+            {
+                $TestParams.ExemptObjectGUIDs = $TestAddressAvailabilityExemptGUID
+            }
+            $TestResult = $(
+                Try
+                {
+                    Test-ExchangeProxyAddress @TestParams
+                }
+                Catch
+                {
+                    $False
+                }            
+            )
+            if ($false -eq $TestResult)
             {
                 $AllIncomingProxyAddresses.Remove($i)
             }

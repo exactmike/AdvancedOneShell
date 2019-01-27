@@ -1,6 +1,6 @@
-﻿Function Test-ExchangeProxyAddress {
-        
-    [cmdletbinding()]
+﻿Function Test-ExchangeProxyAddress
+{        
+    [cmdletbinding(DefaultParameterSetName = 'ExchangeSession')]
     param
     (
         [string]$ProxyAddress
@@ -9,54 +9,54 @@
         ,
         [switch]$ReturnConflicts
         ,
-        [parameter()]
+        [parameter(Mandatory = $true, ParameterSetName = 'ExchangeSession')]
         [System.Management.Automation.Runspaces.PSSession]$ExchangeSession
+        ,
+        [parameter(Mandatory = $true, ParameterSetName = 'Hashtable')]
+        [hashtable]$ProxyAddressHashtable
         ,
         [parameter()]
         [ValidateSet('SMTP', 'X500')]
         [string]$ProxyAddressType = 'SMTP'
     )
-    #Populate the Global TestExchangeProxyAddress Hash Table if needed
-    <# if (Test-Path -Path variable:Script:TestExchangeProxyAddress)
-            {
-                if ($RefreshProxyAddressData)
-                {
-                    if ($null -eq $ExchangeSession)
-                    {
-                        throw('You must include the Exchange Session to use the RefreshProxyAddressData switch')
-                    }
-                    Write-Log -message 'Running New-TestExchangeProxyAddress'
-                    New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
-                }
-            }
-            else
-            {
-                Write-Log -message 'Running New-TestExchangeProxyAddress'
-                New-TestExchangeProxyAddress -ExchangeSession $ExchangeSession
-            }
-        #>
-
-    #Fix the ProxyAddress if needed
     if ($ProxyAddress -like "$($proxyaddresstype):*")
     {
         $ProxyAddress = $ProxyAddress.Split(':')[1]
     }
     #Test the ProxyAddress
     $ReturnedObjects = @(
-        try
+        switch ($PSCmdlet.ParameterSetName)
         {
-            invoke-command -Session $ExchangeSession -ScriptBlock {Get-Recipient -identity $using:ProxyAddress -ErrorAction Stop} -ErrorAction Stop
-            Write-Verbose -Message "Existing object(s) Found for Alias $ProxyAddress"
-        }
-        catch
-        {
-            if ($_.categoryinfo -like '*ManagementObjectNotFoundException*')
+            'ExchangeSession'
             {
-                Write-Verbose -Message "No existing object(s) Found for Alias $ProxyAddress"
+                try
+                {
+                    invoke-command -Session $ExchangeSession -ScriptBlock {Get-Recipient -identity $using:ProxyAddress -ErrorAction Stop} -ErrorAction Stop
+                    Write-Verbose -Message "Existing object(s) Found for Alias $ProxyAddress"
+                }
+                catch
+                {
+                    if ($_.categoryinfo -like '*ManagementObjectNotFoundException*')
+                    {
+                        Write-Verbose -Message "No existing object(s) Found for Alias $ProxyAddress"
+                    }
+                    else
+                    {
+                        throw($_)
+                    }
+                }
             }
-            else
+            'Hashtable'
             {
-                throw($_)
+                if ($ProxyAddressHashtable.ContainsKey($ProxyAddress))
+                {
+                    $ProxyAddressHashtable.$ProxyAddress
+                    Write-Verbose -Message "Existing object(s) Found for Alias $ProxyAddress"
+                }
+                else
+                {
+                    Write-Verbose -Message "No existing object(s) Found for Alias $ProxyAddress"
+                }
             }
         }
     )
