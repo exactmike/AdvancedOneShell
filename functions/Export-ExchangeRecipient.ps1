@@ -9,7 +9,7 @@ function Export-ExchangeRecipient
         [string]$RecipientFilter = 'CustomAttribute5 -notlike "ACS*"'
         ,
         [parameter(Mandatory)]
-        [ValidateSet('Mailbox', 'CASMailbox', 'RemoteMailbox', 'ResourceCalendarProcessing', 'PublicFolderMailbox', 'ArbitrationMailbox', 'MailboxStatistics', 'PublicFolder', 'PublicFolderStatistics', 'MailPublicFolder', 'Contact', 'DistributionGroup', 'MailUser')]
+        [ValidateSet('Mailbox', 'CASMailbox', 'RemoteMailbox', 'ResourceCalendarProcessing', 'PublicFolderMailbox', 'ArbitrationMailbox', 'MailboxStatistics', 'PublicFolder', 'PublicFolderStatistics', 'MailPublicFolder', 'Contact', 'DistributionGroup', 'DistributionGroupMember', 'UnifiedGroup', 'UnifiedGroupMember', 'MailUser')]
         [string[]]$Operation
         ,
         [parameter()]
@@ -121,6 +121,53 @@ function Export-ExchangeRecipient
         {
             $AMParams.Name = $_
             $AMParams.Value = @(Get-DistributionGroup @GetRParams)
+            $ExchangeRecipients | Add-Member @AMParams
+        }
+        'DistributionGroupMember'
+        {
+            $getDGMemberParams = @{
+                Identity   = ''
+                ResultSize = 'Unlimited'
+            }
+
+            $AMParams.Name = $_
+            $AMParams.Value = @(
+
+                foreach ($dg in $ExchangeRecipients.DistributionGroup)
+                {
+                    $getDGMemberParams.Identity = $dg.guid.guid
+                    Get-DistributionGroupMember @getDGMemberParams |
+                    Select-Object -Property DisplayName,Alias,PrimarySMTPAddress,RecipientTypeDetails,GUID,ExchangeGUID,ExternalDirectoryObjectID,@{name='MemberOfGUID';e= {$dg.guid.guid}}, @{n='MemberOfPrimarySMTPAddress';e= {$dg.PrimarySMTPAddress}},@{n='MemberOfDisplayName';e= {$dg.DisplayName}}
+                }
+
+            )
+            $ExchangeRecipients | Add-Member @AMParams
+        }
+        'UnifiedGroup'
+        {
+            $AMParams.Name = $_
+            $AMParams.Value = @(Get-UnifiedGroup @GetRParams)
+            $ExchangeRecipients | Add-Member @AMParams
+        }
+        'UnifiedGroupMember'
+        {
+            $getUGMemberParams = @{
+                Identity   = ''
+                ResultSize = 'Unlimited'
+                LinkType   = 'Member'
+            }
+
+            $AMParams.Name = $_
+            $AMParams.Value = @(
+
+                foreach ($ug in $ExchangeRecipients.UnifiedGroup)
+                {
+                    $getUGMemberParams.Identity = $ug.guid.guid
+                    Get-UnifiedGroupLinks @getUGMemberParams |
+                    Select-Object -Property DisplayName,Alias,PrimarySMTPAddress,RecipientTypeDetails,GUID,ExchangeGUID,ExternalDirectoryObjectID,@{name='MemberOfGUID';e= {$ug.guid.guid}}, @{n='MemberOfPrimarySMTPAddress';e= {$ug.PrimarySMTPAddress}},@{n='MemberOfDisplayName';e= {$ug.DisplayName}}
+                }
+
+            )
             $ExchangeRecipients | Add-Member @AMParams
         }
         'MailUser'
